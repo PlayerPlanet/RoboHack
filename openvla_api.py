@@ -94,13 +94,24 @@ def load_local_pipeline(model_id: Optional[str] = None) -> Any:
         # transformers Model class to provide a default to avoid
         # AttributeError during model init.
         try:
-            import transformers.modeling_utils as _modeling_utils
+            # Ensure common base classes define _supports_sdpa so custom model
+            # initialization doesn't fail when checking this attribute.
+            import torch.nn as _nn
+            if not hasattr(_nn.Module, "_supports_sdpa"):
+                setattr(_nn.Module, "_supports_sdpa", True)
+                LOG.info("Patched torch.nn.Module._supports_sdpa = True")
 
-            if not hasattr(_modeling_utils.Model, "_supports_sdpa"):
-                setattr(_modeling_utils.Model, "_supports_sdpa", True)
-                LOG.info("Patched transformers.modeling_utils.Model._supports_sdpa = True")
+            try:
+                import transformers.modeling_utils as _modeling_utils
+                # PreTrainedModel is commonly the base; make sure it has the attr too.
+                pretrain_cls = getattr(_modeling_utils, 'PreTrainedModel', None)
+                if pretrain_cls is not None and not hasattr(pretrain_cls, "_supports_sdpa"):
+                    setattr(pretrain_cls, "_supports_sdpa", True)
+                    LOG.info("Patched transformers.modeling_utils.PreTrainedModel._supports_sdpa = True")
+            except Exception as _e:
+                LOG.debug("Could not patch transformers Model classes: %s", _e)
         except Exception as _e:
-            LOG.debug("Could not patch transformers Model class: %s", _e)
+            LOG.debug("Could not patch torch.nn.Module: %s", _e)
 
         _local_pipe = pipeline("image-to-text", model=model, device=device, trust_remote_code=True)
         LOG.info("Model loaded successfully (device=%s)", device)
