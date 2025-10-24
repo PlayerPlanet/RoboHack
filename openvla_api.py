@@ -51,6 +51,33 @@ except Exception:  # pragma: no cover - runtime dependency
 LOG = logging.getLogger("openvla_api")
 logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 
+# Configure transformers attention backend early (try flash_attention_2, fall back to eager).
+try:
+    # set_attention_backend exists in newer transformers versions
+    from transformers import set_attention_backend  # type: ignore
+
+    pref = os.environ.get('OPENVLA_ATTENTION', 'auto').lower()
+    if pref == 'auto':
+        try:
+            set_attention_backend('flash_attention_2')
+            LOG.info('Set transformers attention backend to flash_attention_2')
+        except Exception:
+            try:
+                set_attention_backend('eager')
+                LOG.info('flash_attention_2 not available, set attention backend to eager')
+            except Exception:
+                os.environ['PYTORCH_ATTENTION_BACKEND'] = 'eager'
+                LOG.info('Fell back to PYTORCH_ATTENTION_BACKEND=eager')
+    else:
+        try:
+            set_attention_backend(pref)
+            LOG.info('Set transformers attention backend to %s', pref)
+        except Exception:
+            os.environ['PYTORCH_ATTENTION_BACKEND'] = pref
+            LOG.info('Set env PYTORCH_ATTENTION_BACKEND=%s', pref)
+except Exception as _e:
+    LOG.debug('Could not set attention backend via transformers API: %s', _e)
+
 app = FastAPI(title="OpenVLA local OpenVLA server")
 
 # global pipeline instance (lazy loaded)
