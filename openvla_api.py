@@ -89,6 +89,19 @@ def load_local_pipeline(model_id: Optional[str] = None) -> Any:
 
     # Attempt to create an image-to-text pipeline
     try:
+        # Some remote model code expects the base Model class to have a
+        # `_supports_sdpa` attribute present on instances. Patch the
+        # transformers Model class to provide a default to avoid
+        # AttributeError during model init.
+        try:
+            import transformers.modeling_utils as _modeling_utils
+
+            if not hasattr(_modeling_utils.Model, "_supports_sdpa"):
+                setattr(_modeling_utils.Model, "_supports_sdpa", True)
+                LOG.info("Patched transformers.modeling_utils.Model._supports_sdpa = True")
+        except Exception as _e:
+            LOG.debug("Could not patch transformers Model class: %s", _e)
+
         _local_pipe = pipeline("image-to-text", model=model, device=device, trust_remote_code=True)
         LOG.info("Model loaded successfully (device=%s)", device)
         return _local_pipe
