@@ -186,6 +186,16 @@ async def predict(
     The model is loaded locally (lazy load). Returns the pipeline output as JSON.
     """
 
+    # Immediately patch common transformers base classes to avoid missing attributes
+    try:
+        import transformers.modeling_utils as _modeling_utils
+        pretrain_cls = getattr(_modeling_utils, 'PreTrainedModel', None)
+        if pretrain_cls is not None and not hasattr(pretrain_cls, '_supports_sdpa'):
+            setattr(pretrain_cls, '_supports_sdpa', True)
+            LOG.info('Patched transformers.PreTrainedModel._supports_sdpa = True')
+    except Exception:
+        # not fatal; we'll attempt other fallbacks later
+        pass
     # read file bytes and convert to PIL Image
     try:
         contents = await file.read()
