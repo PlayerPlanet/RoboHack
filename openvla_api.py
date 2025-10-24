@@ -130,13 +130,22 @@ def load_local_pipeline(model_id: Optional[str] = None) -> Any:
                 try:
                     LOG.info("Attempting manual config+model load as a fallback")
                     cfg = AutoConfig.from_pretrained(model, trust_remote_code=True)
-                    # Some custom model code expects config._supports_sdpa to exist
-                    if not hasattr(cfg, "_supports_sdpa"):
-                        setattr(cfg, "_supports_sdpa", True)
+                    # Prefer flash_attention_2 for this model; disable SDPA support
+                    # The model's custom code expects certain config attributes — set them explicitly.
+                    try:
+                        setattr(cfg, "_supports_sdpa", False)
+                        setattr(cfg, "_supports_flash_attn", True)
+                        setattr(cfg, "_attn_implementation_internal", "flash_attention_2")
+                        LOG.info("Patched config attention impl -> flash_attention_2")
+                    except Exception as _e:
+                        LOG.debug("Could not patch cfg attention attrs: %s", _e)
+
                     # Load the model with the patched config
-                    model_obj = AutoModel.from_pretrained(model, config=cfg, trust_remote_code=True, device_map='auto')
+                    model_obj = AutoModel.from_pretrained(
+                        model, config=cfg, trust_remote_code=True, device_map='auto'
+                    )
                     _local_pipe = pipeline("image-to-text", model=model_obj, device_map='auto')
-                    LOG.info("Manual load succeeded")
+                    LOG.info("Manual load succeeded with patched attention settings")
                     return _local_pipe
                 except Exception as exc3:
                     LOG.exception("Manual load fallback failed: %s", exc3)
