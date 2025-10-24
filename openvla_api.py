@@ -34,11 +34,19 @@ try:
     from transformers import pipeline
     Pipeline = Any
     from PIL import Image
+    # import helpers for manual model/config loading (used as a fallback)
+    try:
+        from transformers import AutoConfig, AutoModel
+    except Exception:
+        AutoConfig = None
+        AutoModel = None
 except Exception:  # pragma: no cover - runtime dependency
     torch = None
     pipeline = None
     Pipeline = None
     Image = None
+    AutoConfig = None
+    AutoModel = None
 
 LOG = logging.getLogger("openvla_api")
 logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
@@ -93,6 +101,22 @@ def load_local_pipeline(model_id: Optional[str] = None) -> Any:
             return _local_pipe
         except Exception as exc2:
             LOG.exception("Failed to load model with device_map='auto': %s", exc2)
+            # As a last resort, try to load config and model manually and patch missing attributes
+            if AutoConfig is not None and AutoModel is not None:
+                try:
+                    LOG.info("Attempting manual config+model load as a fallback")
+                    cfg = AutoConfig.from_pretrained(model, trust_remote_code=True)
+                    # Some custom model code expects config._supports_sdpa to exist
+                    if not hasattr(cfg, "_supports_sdpa"):
+                        setattr(cfg, "_supports_sdpa", True)
+                    # Load the model with the patched config
+                    model_obj = AutoModel.from_pretrained(model, config=cfg, trust_remote_code=True, device_map='auto')
+                    _local_pipe = pipeline("image-to-text", model=model_obj, device_map='auto')
+                    LOG.info("Manual load succeeded")
+                    return _local_pipe
+                except Exception as exc3:
+                    LOG.exception("Manual load fallback failed: %s", exc3)
+
             raise RuntimeError(f"Unable to load model {model}: {exc2}")
 
 
