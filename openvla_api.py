@@ -129,74 +129,27 @@ def load_local_pipeline(model_id: Optional[str] = None) -> Any:
         # transformers Model class to provide a default to avoid
         # AttributeError during model init.
         try:
-            # Ensure instances of common base classes get default flags for
-            # attention support. Some custom model classes check instance
-            # attributes (like _supports_sdpa) during __init__, so setting
-            # class attributes alone may not be sufficient. We wrap the
-            # base __init__ to ensure every instance receives sane defaults.
-            import torch.nn as _nn
-            try:
-                _orig_nn_init = _nn.Module.__init__
+            # Safer approach: intercept attribute access on the HF PreTrainedModel
+            # so reads of `_supports_sdpa` / `_supports_flash_attn` return a
+            # known default (False) without attempting to assign to any
+            # read-only property descriptors on the concrete model class.
+            import transformers.modeling_utils as _modeling_utils
+            pretrain_cls = getattr(_modeling_utils, 'PreTrainedModel', None)
+            if pretrain_cls is not None and not getattr(pretrain_cls, '_openvla_patched_getattribute', False):
+                _orig_getattribute = pretrain_cls.__getattribute__
 
-                def _nn_patched_init(self, *a, **kw):
-                    _orig_nn_init(self, *a, **kw)
-                    # Default to False for SDPA so models don't try to
-                    # dispatch into SDPA paths unexpectedly. Enable
-                    # flash_attn flag to allow flash_attention_2 when
-                    # available.
-                    if not hasattr(self, '_supports_sdpa'):
-                        try:
-                            object.__setattr__(self, '_supports_sdpa', False)
-                        except Exception:
-                            setattr(self, '_supports_sdpa', False)
-                    if not hasattr(self, '_supports_flash_attn'):
-                        try:
-                            object.__setattr__(self, '_supports_flash_attn', False)
-                        except Exception:
-                            setattr(self, '_supports_flash_attn', False)
+                def _patched_getattribute(self, name):
+                    if name == '_supports_sdpa':
+                        return False
+                    if name == '_supports_flash_attn':
+                        return False
+                    return _orig_getattribute(self, name)
 
-                _nn.Module.__init__ = _nn_patched_init
-                LOG.info('Patched torch.nn.Module.__init__ to set instance _supports_sdpa/_supports_flash_attn defaults')
-            except Exception as _e:
-                # Fallback: set class attribute so getattr can find it in many cases
-                try:
-                    if not hasattr(_nn.Module, '_supports_sdpa'):
-                        setattr(_nn.Module, '_supports_sdpa', False)
-                        LOG.info("Patched torch.nn.Module._supports_sdpa = False (fallback)")
-                except Exception:
-                    LOG.debug('Could not patch torch.nn.Module defaults: %s', _e)
-
-            try:
-                import transformers.modeling_utils as _modeling_utils
-                pretrain_cls = getattr(_modeling_utils, 'PreTrainedModel', None)
-                if pretrain_cls is not None:
-                    try:
-                        _orig_pt_init = pretrain_cls.__init__
-
-                        def _pt_patched_init(self, *a, **kw):
-                            _orig_pt_init(self, *a, **kw)
-                            if not hasattr(self, '_supports_sdpa'):
-                                try:
-                                    object.__setattr__(self, '_supports_sdpa', False)
-                                except Exception:
-                                    setattr(self, '_supports_sdpa', False)
-                            if not hasattr(self, '_supports_flash_attn'):
-                                try:
-                                    object.__setattr__(self, '_supports_flash_attn', False)
-                                except Exception:
-                                    setattr(self, '_supports_flash_attn', False)
-
-                        pretrain_cls.__init__ = _pt_patched_init
-                        LOG.info('Patched transformers.PreTrainedModel.__init__ to set _supports_sdpa defaults')
-                    except Exception as _e:
-                        # fallback to class attrs
-                        if not hasattr(pretrain_cls, '_supports_sdpa'):
-                            setattr(pretrain_cls, '_supports_sdpa', False)
-                            LOG.info('Patched transformers.PreTrainedModel._supports_sdpa = False (fallback)')
-            except Exception as _e:
-                LOG.debug('Could not patch transformers Model classes: %s', _e)
+                pretrain_cls.__getattribute__ = _patched_getattribute
+                setattr(pretrain_cls, '_openvla_patched_getattribute', True)
+                LOG.info('Patched transformers.PreTrainedModel.__getattribute__ to return defaults for _supports_sdpa/_supports_flash_attn')
         except Exception as _e:
-            LOG.debug("Could not patch torch.nn.Module: %s", _e)
+            LOG.debug('Could not patch transformers.PreTrainedModel.__getattribute__: %s', _e)
 
         _local_pipe = pipeline("image-to-text", model=model, device=device, trust_remote_code=True)
         LOG.info("Model loaded successfully (device=%s)", device)
