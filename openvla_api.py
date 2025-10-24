@@ -81,14 +81,14 @@ def load_local_pipeline(model_id: Optional[str] = None) -> Any:
 
     # Attempt to create an image-to-text pipeline
     try:
-        _local_pipe = pipeline("image-to-text", model=model, device=device)
+        _local_pipe = pipeline("image-to-text", model=model, device=device, trust_remote_code=True)
         LOG.info("Model loaded successfully (device=%s)", device)
         return _local_pipe
     except Exception as exc:
         LOG.exception("Failed to load pipeline with simple settings: %s", exc)
         # Try with device_map='auto' (requires accelerate)
         try:
-            _local_pipe = pipeline("image-to-text", model=model, device_map='auto')
+            _local_pipe = pipeline("image-to-text", model=model, device_map='auto', trust_remote_code=True)
             LOG.info("Model loaded with device_map='auto'")
             return _local_pipe
         except Exception as exc2:
@@ -96,17 +96,16 @@ def load_local_pipeline(model_id: Optional[str] = None) -> Any:
             raise RuntimeError(f"Unable to load model {model}: {exc2}")
 
 
-
-    @app.on_event("startup")
-    def maybe_preload():
-        """Optionally preload the model at startup when OPENVLA_PRELOAD=1 is set."""
-        try:
-            preload = os.environ.get('OPENVLA_PRELOAD', '0')
-            if preload == '1':
-                LOG.info("OPENVLA_PRELOAD=1 -> preloading model")
-                load_local_pipeline()
-        except Exception as exc:
-            LOG.exception("Preload failed: %s", exc)
+@app.on_event("startup")
+def maybe_preload():
+    """Optionally preload the model at startup when OPENVLA_PRELOAD=1 is set."""
+    try:
+        preload = os.environ.get('OPENVLA_PRELOAD', '0')
+        if preload == '1':
+            LOG.info("OPENVLA_PRELOAD=1 -> preloading model")
+            load_local_pipeline()
+    except Exception as exc:
+        LOG.exception("Preload failed: %s", exc)
 
 
 def get_hf_token() -> Optional[str]:

@@ -145,7 +145,7 @@ def tcp_send_loop(host: str, port: int, streamer: FrameStreamer, reconnect: bool
                 pass
 
 
-def http_send_loop(url: str, streamer: FrameStreamer, interval: float = 0.0, headers: Optional[dict] = None) -> None:
+def http_send_loop(url: str, streamer: FrameStreamer, interval: float = 0.0, headers: Optional[dict] = None, prompt: Optional[str] = None, model_id: Optional[str] = None) -> None:
     if requests is None:
         raise RuntimeError("requests is required for http mode. Install with: pip install requests")
 
@@ -156,9 +156,15 @@ def http_send_loop(url: str, streamer: FrameStreamer, interval: float = 0.0, hea
                 time.sleep(0.01)
                 continue
 
-            files = {'frame': ('frame.jpg', frame, 'image/jpeg')}
+            # Send using the OpenVLA /predict expected form: file, prompt (optional), model_id (optional)
+            files = {'file': ('frame.jpg', frame, 'image/jpeg')}
+            data = {}
+            if prompt:
+                data['prompt'] = prompt
+            if model_id:
+                data['model_id'] = model_id
             try:
-                resp = requests.post(url, files=files, headers=headers or {}, timeout=10)
+                resp = requests.post(url, files=files, data=data, headers=headers or {}, timeout=30)
                 LOG.debug("POST %s -> %d", url, getattr(resp, 'status_code', None))
             except Exception as exc:
                 LOG.warning("HTTP POST failed: %s", exc)
@@ -177,6 +183,8 @@ def main(argv=None):
     sub.add_argument('--host', default='localhost', help='target host for TCP')
     sub.add_argument('--port', type=int, default=9000, help='target port for TCP')
     sub.add_argument('--url', help='target URL for HTTP POST mode')
+    sub.add_argument('--prompt', help='optional text prompt to send with each frame (http mode)')
+    sub.add_argument('--model-id', dest='model_id', help='optional model_id to send with each frame (http mode)')
 
     parser.add_argument('--src', type=int, default=0, help='video capture source index')
     parser.add_argument('--width', type=int, default=None, help='requested capture width')
@@ -219,7 +227,7 @@ def main(argv=None):
                 LOG.error("--url is required in http mode")
                 sys.exit(2)
             LOG.info("Starting HTTP POST to %s (interval=%s)", args.url, args.interval)
-            http_send_loop(args.url, streamer, interval=args.interval)
+            http_send_loop(args.url, streamer, interval=args.interval, prompt=getattr(args, 'prompt', None), model_id=getattr(args, 'model_id', None))
     finally:
         LOG.info("Cleaning up")
         streamer.close()

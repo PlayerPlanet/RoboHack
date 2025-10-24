@@ -16,4 +16,5 @@ dependencies = [
 	"torch>=2.2.0",
 	"safetensors>=0.3.0",
 	"bitsandbytes>=0.39.0",
+	"timm>=0.9.0",
 ]
