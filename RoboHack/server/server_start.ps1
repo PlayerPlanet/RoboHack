@@ -17,7 +17,7 @@ try {
   }
 
   Write-Host "Installing requirements"
-  pip install fastapi asyncio pydantic speechrecognition pyttsx3 uvicorn
+  pip install fastapi asyncio pydantic speechrecognition pyttsx3 uvicorn python-multipart
 
   Write-Host "Starting server on http://0.0.0.0:8000"
   Write-Host "Press Ctrl+C to stop the server."
