@@ -63,7 +63,7 @@ uv run python -m vlm_server.vlm_app
 uv run python -m policy_server.policy_server
 uv run python -m policy_server.robot_client
 ```
-
+`
 ---
 
 ## 🧰 Core Components
