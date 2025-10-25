@@ -7,6 +7,16 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+    restart: unless-stopped
+
+
     deploy:
       resources:
         reservations:
@@ -14,4 +24,7 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-              
+
+volumes:
+  ollama: {}
+
