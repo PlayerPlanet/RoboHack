@@ -7,7 +7,7 @@ import io
 import os
 import json
 
-
+from sympy import false
 
 # --- Configuration ---
 STT_URL = "http://localhost:8000/stt"
@@ -45,6 +45,12 @@ conversation_history = [{"role": "system", "content": SYSTEM_PROMPT}]
 
 def record_audio(duration, fs):
     """Records audio from the default microphone."""
+    press = True
+    while press:
+        key = input("Press enter to start listening....")
+        if key == "": press = False
+        pass
+
     print("Listening...")
     recording = sd.rec(int(duration * fs), samplerate=fs, channels=1, dtype='int16')
     sd.wait()  # Wait for recording to complete
