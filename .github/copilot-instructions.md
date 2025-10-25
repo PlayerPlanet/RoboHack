@@ -37,9 +37,9 @@ Purpose: give an AI coding agent the minimal, concrete facts it needs to be prod
     # or
     python -m RoboHack.client.robot_client
     ```
-  - Unit tests: repository references `pytest` in contribution flow; run all tests with:
+  - Unit tests: repository references `pytest` in contribution flow; on Windows PowerShell we prefer using the project's `uv` helper to ensure the correct environment. Run all tests with:
     ```powershell
-    pytest -q
+    uv run python -m pytest -q
     ```
 
 - Project-specific notes for the agent
