@@ -388,6 +388,7 @@ wheels = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "contourpy"
 version = "1.3.3"
 source = { registry = "https://pypi.org/simple" }
@@ -479,6 +480,8 @@ wheels = [
 ]
 
 [[package]]
+=======
+>>>>>>> ee4fd8e3e53710f891749d9acafef50efe169f33
 name = "datasets"
 version = "4.1.1"
 source = { registry = "https://pypi.org/simple" }
@@ -598,6 +601,7 @@ wheels = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "feetech-servo-sdk"
 version = "1.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -607,6 +611,8 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/5f/8e/c53d6f9a8bf3a86a635b58eeb675723f1b040f1665a0681467756c8989aa/feetech-servo-sdk-1.0.0.tar.gz", hash = "sha256:d4d3832e4b1b22a8222133a414db9f868224c2fb639426a1b11d96ddfe84e69c", size = 8392, upload-time = "2022-11-08T03:44:45.269Z" }
 
 [[package]]
+=======
+>>>>>>> ee4fd8e3e53710f891749d9acafef50efe169f33
 name = "filelock"
 version = "3.20.0"
 source = { registry = "https://pypi.org/simple" }
@@ -616,6 +622,7 @@ wheels = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "fonttools"
 version = "4.60.1"
 source = { registry = "https://pypi.org/simple" }
@@ -665,6 +672,8 @@ wheels = [
 ]
 
 [[package]]
+=======
+>>>>>>> ee4fd8e3e53710f891749d9acafef50efe169f33
 name = "frozenlist"
 version = "1.8.0"
 source = { registry = "https://pypi.org/simple" }
@@ -808,6 +817,7 @@ wheels = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "grpcio"
 version = "1.73.1"
 source = { registry = "https://pypi.org/simple" }
@@ -846,6 +856,8 @@ wheels = [
 ]
 
 [[package]]
+=======
+>>>>>>> ee4fd8e3e53710f891749d9acafef50efe169f33
 name = "gymnasium"
 version = "1.2.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1085,6 +1097,7 @@ wheels = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "kiwisolver"
 version = "1.4.9"
 source = { registry = "https://pypi.org/simple" }
@@ -1175,9 +1188,11 @@ wheels = [
 ]
 
 [[package]]
+=======
+>>>>>>> ee4fd8e3e53710f891749d9acafef50efe169f33
 name = "lerobot"
-version = "0.4.1"
-source = { git = "https://github.com/huggingface/lerobot.git?rev=main#d11ec6b5ef15d937d8281f7a72ebb4652d05216e" }
+version = "0.4.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "accelerate" },
     { name = "av" },
@@ -1203,7 +1218,12 @@ dependencies = [
     { name = "torchvision" },
     { name = "wandb" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/53/51/f125de006b655a23a3326e96bed28678751b4c5239664350ea11e5c59948/lerobot-0.4.0.tar.gz", hash = "sha256:8e464a33825b343209d9a13646da1f05f74fc8f0174db976f4b232bc6950ab6a", size = 558414, upload-time = "2025-10-23T18:38:31.216Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7c/76/187b2aae3ceed15370a801206e78a491e80ff27cd4bad6416983c2335f18/lerobot-0.4.0-py3-none-any.whl", hash = "sha256:69d407fe7e3aad23e2bbf1e89466e514b31efab539114da4d8811aabf6df86b1", size = 735079, upload-time = "2025-10-23T18:38:29.55Z" },
+]
 
+<<<<<<< HEAD
 [package.optional-dependencies]
 async = [
     { name = "grpcio" },
@@ -1214,6 +1234,8 @@ feetech = [
     { name = "feetech-servo-sdk" },
 ]
 
+=======
+>>>>>>> ee4fd8e3e53710f891749d9acafef50efe169f33
 [[package]]
 name = "markupsafe"
 version = "3.0.3"
@@ -1289,6 +1311,7 @@ wheels = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "matplotlib"
 version = "3.10.7"
 source = { registry = "https://pypi.org/simple" }
@@ -1353,6 +1376,8 @@ wheels = [
 ]
 
 [[package]]
+=======
+>>>>>>> ee4fd8e3e53710f891749d9acafef50efe169f33
 name = "mergedeep"
 version = "1.3.4"
 source = { registry = "https://pypi.org/simple" }
@@ -1608,7 +1633,11 @@ name = "nvidia-cudnn-cu12"
 version = "9.5.1.17"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+<<<<<<< HEAD
+    { name = "nvidia-cublas-cu12" },
+=======
     { name = "nvidia-cublas-cu12", marker = "sys_platform == 'linux'" },
+>>>>>>> ee4fd8e3e53710f891749d9acafef50efe169f33
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2a/78/4535c9c7f859a64781e43c969a3a7e84c54634e319a996d43ef32ce46f83/nvidia_cudnn_cu12-9.5.1.17-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:30ac3869f6db17d170e0e556dd6cc5eee02647abc31ca856634d5a40f82c15b2", size = 570988386, upload-time = "2024-10-25T19:54:26.39Z" },
@@ -1619,7 +1648,11 @@ name = "nvidia-cufft-cu12"
 version = "11.3.0.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+<<<<<<< HEAD
+    { name = "nvidia-nvjitlink-cu12" },
+=======
     { name = "nvidia-nvjitlink-cu12", marker = "sys_platform == 'linux'" },
+>>>>>>> ee4fd8e3e53710f891749d9acafef50efe169f33
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8f/16/73727675941ab8e6ffd86ca3a4b7b47065edcca7a997920b831f8147c99d/nvidia_cufft_cu12-11.3.0.4-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:ccba62eb9cef5559abd5e0d54ceed2d9934030f51163df018532142a8ec533e5", size = 200221632, upload-time = "2024-11-20T17:41:32.357Z" },
@@ -1648,9 +1681,15 @@ name = "nvidia-cusolver-cu12"
 version = "11.7.1.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+<<<<<<< HEAD
+    { name = "nvidia-cublas-cu12" },
+    { name = "nvidia-cusparse-cu12" },
+    { name = "nvidia-nvjitlink-cu12" },
+=======
     { name = "nvidia-cublas-cu12", marker = "sys_platform == 'linux'" },
     { name = "nvidia-cusparse-cu12", marker = "sys_platform == 'linux'" },
     { name = "nvidia-nvjitlink-cu12", marker = "sys_platform == 'linux'" },
+>>>>>>> ee4fd8e3e53710f891749d9acafef50efe169f33
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f0/6e/c2cf12c9ff8b872e92b4a5740701e51ff17689c4d726fca91875b07f655d/nvidia_cusolver_cu12-11.7.1.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:e9e49843a7707e42022babb9bcfa33c29857a93b88020c4e4434656a655b698c", size = 158229790, upload-time = "2024-11-20T17:43:43.211Z" },
@@ -1662,7 +1701,11 @@ name = "nvidia-cusparse-cu12"
 version = "12.5.4.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+<<<<<<< HEAD
+    { name = "nvidia-nvjitlink-cu12" },
+=======
     { name = "nvidia-nvjitlink-cu12", marker = "sys_platform == 'linux'" },
+>>>>>>> ee4fd8e3e53710f891749d9acafef50efe169f33
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/06/1e/b8b7c2f4099a37b96af5c9bb158632ea9e5d9d27d7391d7eb8fc45236674/nvidia_cusparse_cu12-12.5.4.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:7556d9eca156e18184b94947ade0fba5bb47d69cec46bf8660fd2c71a4b48b73", size = 216561367, upload-time = "2024-11-20T17:44:54.824Z" },
@@ -1906,11 +1949,19 @@ wheels = [
 
 [[package]]
 name = "pip"
+<<<<<<< HEAD
+version = "25.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/fe/6e/74a3f0179a4a73a53d66ce57fdb4de0080a8baa1de0063de206d6167acc2/pip-25.3.tar.gz", hash = "sha256:8d0538dbbd7babbd207f261ed969c65de439f6bc9e5dbd3b3b9a77f25d95f343", size = 1803014, upload-time = "2025-10-25T00:55:41.394Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/44/3c/d717024885424591d5376220b5e836c2d5293ce2011523c9de23ff7bf068/pip-25.3-py3-none-any.whl", hash = "sha256:9655943313a94722b7774661c21049070f6bbb0a1516bf02f7c8d5d9201514cd", size = 1778622, upload-time = "2025-10-25T00:55:39.247Z" },
+=======
 version = "25.2"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/20/16/650289cd3f43d5a2fadfd98c68bd1e1e7f2550a1a5326768cddfbcedb2c5/pip-25.2.tar.gz", hash = "sha256:578283f006390f85bb6282dffb876454593d637f5d1be494b5202ce4877e71f2", size = 1840021, upload-time = "2025-07-30T21:50:15.401Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b7/3f/945ef7ab14dc4f9d7f40288d2df998d1837ee0888ec3659c813487572faa/pip-25.2-py3-none-any.whl", hash = "sha256:6d67a2b4e7f14d8b31b8b52648866fa717f45a1eb70e83002f4331d07e953717", size = 1752557, upload-time = "2025-07-30T21:50:13.323Z" },
+>>>>>>> ee4fd8e3e53710f891749d9acafef50efe169f33
 ]
 
 [[package]]
@@ -2035,6 +2086,7 @@ wheels = [
 
 [[package]]
 name = "protobuf"
+<<<<<<< HEAD
 version = "6.31.0"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/13/48/718c1e104a2e89970a8ff3b06d87e152834b576c570a6908f8c17ba88d65/protobuf-6.31.0.tar.gz", hash = "sha256:314fab1a6a316469dc2dd46f993cbbe95c861ea6807da910becfe7475bc26ffe", size = 441644, upload-time = "2025-05-14T17:58:27.862Z" }
@@ -2045,6 +2097,19 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/9b/f2/9a676b50229ce37b12777d7b21de90ae7bc0f9505d07e72e2e8d47b8d165/protobuf-6.31.0-cp39-abi3-manylinux2014_aarch64.whl", hash = "sha256:67ce50195e4e584275623b8e6bc6d3d3dfd93924bf6116b86b3b8975ab9e4571", size = 321950, upload-time = "2025-05-14T17:58:22.04Z" },
     { url = "https://files.pythonhosted.org/packages/a1/a7/243fa2d3c1b7675d54744b32dacf30356f4c27c0d3ad940ca8745a1c6b2c/protobuf-6.31.0-cp39-abi3-manylinux2014_x86_64.whl", hash = "sha256:5353e38844168a327acd2b2aa440044411cd8d1b6774d5701008bd1dba067c79", size = 320904, upload-time = "2025-05-14T17:58:23.438Z" },
     { url = "https://files.pythonhosted.org/packages/ee/01/1ed1d482960a5718fd99c82f6d79120181947cfd4667ec3944d448ed44a3/protobuf-6.31.0-py3-none-any.whl", hash = "sha256:6ac2e82556e822c17a8d23aa1190bbc1d06efb9c261981da95c71c9da09e9e23", size = 168558, upload-time = "2025-05-14T17:58:26.923Z" },
+=======
+version = "6.33.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/19/ff/64a6c8f420818bb873713988ca5492cba3a7946be57e027ac63495157d97/protobuf-6.33.0.tar.gz", hash = "sha256:140303d5c8d2037730c548f8c7b93b20bb1dc301be280c378b82b8894589c954", size = 443463, upload-time = "2025-10-15T20:39:52.159Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7e/ee/52b3fa8feb6db4a833dfea4943e175ce645144532e8a90f72571ad85df4e/protobuf-6.33.0-cp310-abi3-win32.whl", hash = "sha256:d6101ded078042a8f17959eccd9236fb7a9ca20d3b0098bbcb91533a5680d035", size = 425593, upload-time = "2025-10-15T20:39:40.29Z" },
+    { url = "https://files.pythonhosted.org/packages/7b/c6/7a465f1825872c55e0341ff4a80198743f73b69ce5d43ab18043699d1d81/protobuf-6.33.0-cp310-abi3-win_amd64.whl", hash = "sha256:9a031d10f703f03768f2743a1c403af050b6ae1f3480e9c140f39c45f81b13ee", size = 436882, upload-time = "2025-10-15T20:39:42.841Z" },
+    { url = "https://files.pythonhosted.org/packages/e1/a9/b6eee662a6951b9c3640e8e452ab3e09f117d99fc10baa32d1581a0d4099/protobuf-6.33.0-cp39-abi3-macosx_10_9_universal2.whl", hash = "sha256:905b07a65f1a4b72412314082c7dbfae91a9e8b68a0cc1577515f8df58ecf455", size = 427521, upload-time = "2025-10-15T20:39:43.803Z" },
+    { url = "https://files.pythonhosted.org/packages/10/35/16d31e0f92c6d2f0e77c2a3ba93185130ea13053dd16200a57434c882f2b/protobuf-6.33.0-cp39-abi3-manylinux2014_aarch64.whl", hash = "sha256:e0697ece353e6239b90ee43a9231318302ad8353c70e6e45499fa52396debf90", size = 324445, upload-time = "2025-10-15T20:39:44.932Z" },
+    { url = "https://files.pythonhosted.org/packages/e6/eb/2a981a13e35cda8b75b5585aaffae2eb904f8f351bdd3870769692acbd8a/protobuf-6.33.0-cp39-abi3-manylinux2014_s390x.whl", hash = "sha256:e0a1715e4f27355afd9570f3ea369735afc853a6c3951a6afe1f80d8569ad298", size = 339159, upload-time = "2025-10-15T20:39:46.186Z" },
+    { url = "https://files.pythonhosted.org/packages/21/51/0b1cbad62074439b867b4e04cc09b93f6699d78fd191bed2bbb44562e077/protobuf-6.33.0-cp39-abi3-manylinux2014_x86_64.whl", hash = "sha256:35be49fd3f4fefa4e6e2aacc35e8b837d6703c37a2168a55ac21e9b1bc7559ef", size = 323172, upload-time = "2025-10-15T20:39:47.465Z" },
+    { url = "https://files.pythonhosted.org/packages/07/d1/0a28c21707807c6aacd5dc9c3704b2aa1effbf37adebd8caeaf68b17a636/protobuf-6.33.0-py3-none-any.whl", hash = "sha256:25c9e1963c6734448ea2d308cfa610e692b801304ba0908d7bfa564ac5132995", size = 170477, upload-time = "2025-10-15T20:39:51.311Z" },
+>>>>>>> ee4fd8e3e53710f891749d9acafef50efe169f33
 ]
 
 [[package]]
@@ -2256,10 +2321,17 @@ name = "pyobjc-framework-applicationservices"
 version = "12.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+<<<<<<< HEAD
+    { name = "pyobjc-core" },
+    { name = "pyobjc-framework-cocoa" },
+    { name = "pyobjc-framework-coretext" },
+    { name = "pyobjc-framework-quartz" },
+=======
     { name = "pyobjc-core", marker = "sys_platform != 'linux'" },
     { name = "pyobjc-framework-cocoa", marker = "sys_platform != 'linux'" },
     { name = "pyobjc-framework-coretext", marker = "sys_platform != 'linux'" },
     { name = "pyobjc-framework-quartz", marker = "sys_platform != 'linux'" },
+>>>>>>> ee4fd8e3e53710f891749d9acafef50efe169f33
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/8c/79/0b7a00bcc7561c816281382c933a46aa7a90acca48b942054b7d32d0caf7/pyobjc_framework_applicationservices-12.0.tar.gz", hash = "sha256:eabbf6c57573158714aa656e5d0112330a87692db336aae7e94e216db89e93be", size = 103595, upload-time = "2025-10-21T08:26:32.651Z" }
 wheels = [
@@ -2276,7 +2348,11 @@ name = "pyobjc-framework-cocoa"
 version = "12.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+<<<<<<< HEAD
+    { name = "pyobjc-core" },
+=======
     { name = "pyobjc-core", marker = "sys_platform != 'linux'" },
+>>>>>>> ee4fd8e3e53710f891749d9acafef50efe169f33
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/37/6f/89837da349fe7de6476c426f118096b147de923139556d98af1832c64b97/pyobjc_framework_cocoa-12.0.tar.gz", hash = "sha256:02d69305b698015a20fcc8e1296e1528e413d8cf9fdcd590478d359386d76e8a", size = 2771906, upload-time = "2025-10-21T08:30:51.765Z" }
 wheels = [
@@ -2293,9 +2369,15 @@ name = "pyobjc-framework-coretext"
 version = "12.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+<<<<<<< HEAD
+    { name = "pyobjc-core" },
+    { name = "pyobjc-framework-cocoa" },
+    { name = "pyobjc-framework-quartz" },
+=======
     { name = "pyobjc-core", marker = "sys_platform != 'linux'" },
     { name = "pyobjc-framework-cocoa", marker = "sys_platform != 'linux'" },
     { name = "pyobjc-framework-quartz", marker = "sys_platform != 'linux'" },
+>>>>>>> ee4fd8e3e53710f891749d9acafef50efe169f33
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/b1/36/32ec183e555b73152d7813f6f7c277fd018440f70a1f142bd75b04946089/pyobjc_framework_coretext-12.0.tar.gz", hash = "sha256:8cc0c7dd2b7e68ad1c760784e422722550c77cbdbd60eb455170ec444ca1cfd2", size = 90546, upload-time = "2025-10-21T08:32:31.291Z" }
 wheels = [
@@ -2312,8 +2394,13 @@ name = "pyobjc-framework-quartz"
 version = "12.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+<<<<<<< HEAD
+    { name = "pyobjc-core" },
+    { name = "pyobjc-framework-cocoa" },
+=======
     { name = "pyobjc-core", marker = "sys_platform != 'linux'" },
     { name = "pyobjc-framework-cocoa", marker = "sys_platform != 'linux'" },
+>>>>>>> ee4fd8e3e53710f891749d9acafef50efe169f33
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/91/0b/3c34fc9de790daff5ca49d1f36cb8dcc353ac10e4e29b4759e397a3831f4/pyobjc_framework_quartz-12.0.tar.gz", hash = "sha256:5bcb9e78d671447e04d89e2e3c39f3135157892243facc5f8468aa333e40d67f", size = 3159509, upload-time = "2025-10-21T08:40:01.918Z" }
 wheels = [
@@ -2326,6 +2413,7 @@ wheels = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "pyparsing"
 version = "3.2.5"
 source = { registry = "https://pypi.org/simple" }
@@ -2335,6 +2423,8 @@ wheels = [
 ]
 
 [[package]]
+=======
+>>>>>>> ee4fd8e3e53710f891749d9acafef50efe169f33
 name = "pyserial"
 version = "3.5"
 source = { registry = "https://pypi.org/simple" }
@@ -2593,9 +2683,15 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "accelerate" },
+<<<<<<< HEAD
     { name = "bitsandbytes" },
     { name = "fastapi" },
     { name = "lerobot", extra = ["async", "feetech"] },
+=======
+    { name = "bitsandbytes", marker = "sys_platform != 'darwin'" },
+    { name = "fastapi" },
+    { name = "lerobot" },
+>>>>>>> ee4fd8e3e53710f891749d9acafef50efe169f33
     { name = "opencv-python" },
     { name = "pillow" },
     { name = "pip" },
@@ -2612,9 +2708,15 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "accelerate", specifier = ">=0.20.3" },
+<<<<<<< HEAD
     { name = "bitsandbytes", specifier = ">=0.39.0" },
     { name = "fastapi", specifier = ">=0.95.0" },
-    { name = "lerobot", extras = ["async", "feetech"], git = "https://github.com/huggingface/lerobot.git?rev=main" },
+    { name = "lerobot", extras = ["async", "feetech"], specifier = ">=0.4.0" },
+=======
+    { name = "bitsandbytes", marker = "sys_platform != 'darwin'", specifier = ">=0.39.0" },
+    { name = "fastapi", specifier = ">=0.95.0" },
+    { name = "lerobot", specifier = ">=0.4.0" },
+>>>>>>> ee4fd8e3e53710f891749d9acafef50efe169f33
     { name = "opencv-python", specifier = ">=4.7.0" },
     { name = "pillow", specifier = ">=10.0.0" },
     { name = "pip", specifier = ">=25.2" },
@@ -2909,7 +3011,11 @@ name = "triton"
 version = "3.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+<<<<<<< HEAD
+    { name = "setuptools" },
+=======
     { name = "setuptools", marker = "sys_platform == 'linux'" },
+>>>>>>> ee4fd8e3e53710f891749d9acafef50efe169f33
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/21/2f/3e56ea7b58f80ff68899b1dbe810ff257c9d177d288c6b0f55bf2fe4eb50/triton-3.3.1-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:b31e3aa26f8cb3cc5bf4e187bf737cbacf17311e1112b781d4a059353dfd731b", size = 155689937, upload-time = "2025-05-29T23:39:44.182Z" },

@@ -8,13 +8,6 @@
       "goals": "Set up basic services, shared utilities, and communication interfaces.",
       "subtasks": [
         {
-          "id": "S1-01",
-          "title": "Initialize repo structure and uv environment",
-          "assignee": "Dev A",
-          "service": "Common",
-          "dependencies": []
-        },
-        {
           "id": "S1-02",
           "title": "Implement common/schemas.py for Prompt, Action, Feedback JSON models",
           "assignee": "Dev A",
