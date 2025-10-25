@@ -19,6 +19,8 @@ SERVER_PORT = 8000
 CAMERA_INDEX = 0
 
 
+
+
 class FaceTrackerThread(threading.Thread):
 
     def __init__(self, env, stop_event):
