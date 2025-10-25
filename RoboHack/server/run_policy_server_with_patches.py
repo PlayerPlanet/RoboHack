@@ -14,33 +14,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'client'))
 # Import patches - this auto-applies all fixes including Pi0 transformer check
 try:
     # When package is installed/available
-    import RoboHack.client.camera_fix  # type: ignore
+    from RoboHack.client.camera_fix import   # type: ignore
 except Exception:
     try:
         # When running from source, import the local module directly
         import camera_fix  # type: ignore
     except Exception:
         print("⚠️  Warning: camera_fix could not be imported; patches may not be applied")
-
-# Import GR00T support patch
-try:
-    import RoboHack.server.patch_groot_support  # type: ignore
-except Exception:
-    try:
-        # When running from source
-        sys.path.insert(0, os.path.dirname(__file__))
-        import patch_groot_support  # type: ignore
-    except Exception:
-        print("⚠️  Warning: groot patch could not be imported; groot policy may not work")
-
-# Import server debugging patch
-try:
-    import RoboHack.server.debug_server_observations  # type: ignore
-except Exception:
-    try:
-        import debug_server_observations  # type: ignore
-    except Exception:
-        print("⚠️  Warning: server debugging patch could not be imported")
 
 # Now we can safely import and run lerobot's policy server
 from lerobot.async_inference.configs import PolicyServerConfig

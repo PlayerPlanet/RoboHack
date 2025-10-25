@@ -29,6 +29,14 @@ dependencies = [
     "soundfile>=0.13.1",
     "scipy>=1.16.2",
 ]
+    "ninja>=1.11.1 ; platform_system == 'Linux'",
+    "packaging>=24.2,<26.0",
+    "num2words>=0.5.14",
+]
+
+[tool.uv.extra-build-dependencies]
+# FlashAttention requires torch as build dependency
+flash-attn = ["torch>=2.2.0"]
 
 [dependency-groups]
 dev = [
