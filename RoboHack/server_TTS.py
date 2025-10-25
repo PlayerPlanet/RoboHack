@@ -1,3 +1,6 @@
+import asyncio
+import threading
+
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -11,10 +14,6 @@ import uvicorn
 
 app = FastAPI(title="RoboHack STT/TTS API")
 
-# Initialize the TTS engine
-engine = pyttsx3.init()
-engine.setProperty('rate', 150)
-engine.setProperty('volume', 1.0)
 
 # Initialize the speech recognizer
 recognizer = sr.Recognizer()
@@ -71,27 +70,64 @@ async def speech_to_text(audio: UploadFile = File(...)):
             except OSError:
                 pass
 
+def run_tts_engine(text, path):
+    """
+    Synchronous function to be run in a thread.
+    Crucially, it creates AND uses its own engine instance.
+    """
+    try:
+        # 1. Initialize the engine *inside the thread*
+        engine = pyttsx3.init()
+        engine.setProperty('rate', 150)
+        engine.setProperty('volume', 1.0)
+
+        # 2. Generate the file
+        engine.save_to_file(text, path)
+        engine.runAndWait()
+
+        # 3. Stop the engine's event loop (important for cleanup)
+        engine.stop()
+
+    except Exception as e:
+        print(f"TTS engine error: {e}")
+        # Create an empty file as a fallback so the read doesn't fail
+        if not os.path.exists(path):
+            with open(path, 'w') as f:
+                pass
+
+
 @app.post("/tts", tags=["Text to Speech"])
 async def text_to_speech(request: TTSRequest):
     """
     Convert text to speech.
-    
+
     Returns an audio file stream containing the synthesized speech.
+    Runs the blocking TTS engine in a separate thread.
     """
+    temp_path = None
     try:
-        # Create a temporary WAV file
         with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_wav:
             temp_path = temp_wav.name
 
-        # Generate speech
-        engine.save_to_file(request.text, temp_path)
-        engine.runAndWait()
+        # Run the blocking pyttsx3 function in a separate thread
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(
+            None,  # Use default ThreadPoolExecutor
+            run_tts_engine,
+            request.text,
+            temp_path
+        )
 
-        # Read the generated audio file
+        if not os.path.exists(temp_path) or os.path.getsize(temp_path) == 0:
+            raise HTTPException(status_code=500, detail="TTS generation failed")
+
+        # Stream the generated audio file
         def iterfile():
-            with open(temp_path, 'rb') as file:
-                yield from file
-            os.unlink(temp_path)  # Clean up after streaming
+            try:
+                with open(temp_path, 'rb') as file:
+                    yield from file
+            finally:
+                os.unlink(temp_path)  # Clean up after streaming
 
         return StreamingResponse(
             iterfile(),
@@ -101,8 +137,13 @@ async def text_to_speech(request: TTSRequest):
             }
         )
     except Exception as e:
+        # Clean up temp file on error if it still exists
+        if temp_path and os.path.exists(temp_path):
+            try:
+                os.unlink(temp_path)
+            except OSError:
+                pass
         raise HTTPException(status_code=400, detail=str(e))
-
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(apphost="0.0.0.0", port=8000)

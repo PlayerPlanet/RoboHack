@@ -24,6 +24,10 @@ dependencies = [
     "protobuf>=6.3",
     "networkx>=3.5",
     "pydantic>=1.10,<2.0",
+    "ollama>=0.3.3",
+    "sounddevice>=0.5.3",
+    "soundfile>=0.13.1",
+    "scipy>=1.16.2",
 ]
 
 [dependency-groups]

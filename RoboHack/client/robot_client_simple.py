@@ -32,7 +32,7 @@ class FaceTrackerThread(threading.Thread):
         self.mp_face_detection = mp.solutions.face_detection
 
         self.P_GAIN_YAW = -0.1
-        self.P_GAIN_Z = -0.8
+        self.P_GAIN_Z = -0.1
 
     def run(self):
         print("Starting idle facetracking routine")
@@ -93,7 +93,7 @@ class FaceTrackerThread(threading.Thread):
 """
 
 
-def main():
+def main(task):
 
     while True:
 
