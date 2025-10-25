@@ -22,6 +22,17 @@ except Exception:
     except Exception:
         print("⚠️  Warning: camera_fix could not be imported; patches may not be applied")
 
+# Import GR00T support patch
+try:
+    import RoboHack.server.patch_groot_support  # type: ignore
+except Exception:
+    try:
+        # When running from source
+        sys.path.insert(0, os.path.dirname(__file__))
+        import patch_groot_support  # type: ignore
+    except Exception:
+        print("⚠️  Warning: groot patch could not be imported; groot policy may not work")
+
 # Now we can safely import and run lerobot's policy server
 from lerobot.async_inference.configs import PolicyServerConfig
 from lerobot.async_inference.policy_server import serve
