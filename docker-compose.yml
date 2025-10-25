@@ -23,7 +23,10 @@ services:
     volumes:
       - ollama:/root/.ollama
     restart: unless-stopped
-
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    networks:
+      - robo-net
 
     deploy:
       resources:
@@ -36,3 +39,6 @@ services:
 volumes:
   ollama: {}
 
+networks:
+  robo-net:
+    driver: bridge

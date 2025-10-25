@@ -7,14 +7,17 @@ import io
 import os
 import json
 
+
+
 # --- Configuration ---
 STT_URL = "http://localhost:8000/stt"
 TTS_URL = "http://localhost:8000/tts"
 OLLAMA_MODEL = "qwen2.5vl:7b"
 
+
 SAMPLE_RATE = 16000
 RECORD_DURATION = 5
-TASK_FILE = "final_task.txt"
+TASK_FILE = "../final_task.txt"
 
 SYSTEM_PROMPT = """
 You are a helpful robotic hand assistant. Your goal is to have a 
@@ -100,7 +103,6 @@ def text_to_speech_and_play(text):
         response = requests.post(TTS_URL, json={"text": text}, timeout=15)
 
         if response.status_code == 200:
-            # Load audio data from response and play it
             audio_data, samplerate = sf.read(io.BytesIO(response.content))
             sd.play(audio_data, samplerate)
             sd.wait()
@@ -141,6 +143,7 @@ def main_loop():
                     f.write(final_task)
                 print(f"Task saved to {TASK_FILE}")
 
+
                 # Confirm task and end
                 text_to_speech_and_play(f"Okay, I will {final_task}.")
                 print("Conversation ended.")
@@ -151,4 +154,5 @@ def main_loop():
             text_to_speech_and_play(ai_response)
 
 if __name__ == "__main__":
-    main_loop()
+    while True:
+        main_loop()
