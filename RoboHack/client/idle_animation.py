@@ -21,8 +21,8 @@ class IdleAnimationThread(threading.Thread):
         self.jaw_frequency = 1.0
 
         self.jaw_amplitude = 0.5
-
-        self.action_shape = self.env.action_space.shape
+        self.action_dim = self.env.config.action_dim
+        self.action_shape = (self.action_dim,)
 
     def run(self):
         print("Starting idle animation routine...")
@@ -45,7 +45,7 @@ class IdleAnimationThread(threading.Thread):
                 # Create a base action vector of all zeros
                 action = np.zeros(self.action_shape)
 
-         
+
                 action[4] = nod_value
                 action[6] = jaw_value
 
