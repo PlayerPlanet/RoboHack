@@ -255,6 +255,7 @@ def main():
 
     # --- PHASE 2: Main Instruction Loop ---
     try:
+        instruction = None
         while True:
             # --- START IDLE MODE ---
             print("Starting idle mode. Waiting for instruction...")
@@ -263,7 +264,7 @@ def main():
             face_tracker.start()
 
             # This blocks until an instruction is received
-            instruction = conversation_hub.main_loop()
+            instruction = conversation_hub.main_loop(instruction)
 
             # --- STOP IDLE MODE ---
             print("Instruction received. Stopping idle mode.")

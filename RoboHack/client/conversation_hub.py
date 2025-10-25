@@ -6,7 +6,7 @@ import requests
 import io
 import os
 import json
-
+from typing import Optional
 
 
 # --- Configuration ---
@@ -111,7 +111,7 @@ def text_to_speech_and_play(text):
     except requests.exceptions.RequestException as e:
         print(f"TTS connection error: {e}")
 
-def main_loop():
+def main_loop(last_instruction: Optional[str] = None):
     """The main conversation loop."""
     text_to_speech_and_play("Hello! I am ready to help.")
 
@@ -125,9 +125,15 @@ def main_loop():
         if not user_text:
             text_to_speech_and_play("I'm sorry, I didn't catch that.")
             continue
-
+        if last_instruction:
+            full_text = ("The latest task you tried is: "
+            +last_instruction
+            +"\n Keeping this in mind, here's what the user said next: "
+            +user_text)
+        else:
+            full_text = user_text
         # 3. Think (Ollama)
-        ai_response = get_ai_response(user_text)
+        ai_response = get_ai_response(full_text)
 
         # 4. Check for Task
         try:
