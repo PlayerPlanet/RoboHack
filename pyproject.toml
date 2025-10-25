@@ -23,6 +23,7 @@ dependencies = [
     "grpcio>=1.76.0",
     "protobuf>=6.3",
     "networkx>=3.5",
+    "pydantic>=1.10,<2.0",
 ]
 
 [dependency-groups]
