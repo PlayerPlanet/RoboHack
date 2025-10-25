@@ -19,5 +19,5 @@ dependencies = [
     "timm>=0.9.10,<1.0.0",
     "uv>=0.9.5",
     "pip>=25.2",
-    "lerobot[async]>=0.4.0",
+    "lerobot[async,feetech]>=0.4.0",
 ]
