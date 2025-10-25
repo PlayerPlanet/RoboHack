@@ -43,7 +43,7 @@ class FaceTrackerThread(threading.Thread):
                     model_selection=0, min_detection_confidence=0.5
             ) as face_detection:
 
-                obs, info = self.env.reset()
+                obs, info = self.env.get_object()
 
                 while not self.stop_event.is_set():
                     image_rgb = obs["image"]
