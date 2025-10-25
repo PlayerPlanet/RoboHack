@@ -69,24 +69,6 @@
           "dependencies": ["S1-03"],
           "status": "open",
           "notes": "VLM server files not present under `RoboHack/vlm_server`."
-        },
-        {
-          "id": "S1-09",
-          "title": "Create PolicyServer skeleton subclassing LeRobot PolicyServer",
-          "assignee": "Dev C",
-          "service": "PolicyServer",
-          "dependencies": ["S1-02"],
-          "status": "open",
-          "notes": "`RoboHack/server/policy_server.py` not present. Only `RoboHack/server/__init__.py` exists."
-        },
-        {
-          "id": "S1-10",
-          "title": "Create RobotClient subclass using LeRobot RobotClient",
-          "assignee": "Dev D",
-          "service": "PolicyServer",
-          "dependencies": ["S1-09"],
-          "status": "done",
-          "notes": "A RobotClient script exists at `RoboHack/client/robot_client.py` which implements client behaviour and uses `lerobot.async_inference.robot_client.RobotClient`."
         }
       ]
     },
