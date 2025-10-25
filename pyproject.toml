@@ -26,6 +26,7 @@ dependencies = [
     "pydantic>=1.10,<2.0",
     "ninja>=1.11.1 ; platform_system == 'Linux'",
     "packaging>=24.2,<26.0",
+    "num2words>=0.5.14",
 ]
 
 [tool.uv.extra-build-dependencies]
