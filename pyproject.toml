@@ -3,7 +3,7 @@ name = "robohack"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.12"
 dependencies = [
     "opencv-python>=4.7.0",
     "requests>=2.31.0",
@@ -20,4 +20,10 @@ dependencies = [
     "uv>=0.9.5",
     "pip>=25.2",
     "lerobot>=0.4.0",
+    "grpcio>=1.76.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
 ]

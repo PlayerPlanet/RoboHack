@@ -12,6 +12,263 @@
           "title": "Implement common/schemas.py for Prompt, Action, Feedback JSON models",
           "assignee": "Dev A",
           "service": "Common",
+          "dependencies": ["S1-01"],
+          "status": "open",
+          "notes": "File not present in repo. Add pydantic models for Prompt/Action/Feedback."
+        },
+        {
+          "id": "S1-03",
+          "title": "Create common/event_router.py with asyncio.Queue pub/sub pattern",
+          "assignee": "Dev B",
+          "service": "Common",
+          "dependencies": ["S1-01"],
+          "status": "open",
+          "notes": "File not present in repo. Provide EventRouter with subscribe/publish APIs."
+        },
+        {
+          "id": "S1-04",
+          "title": "Set up STT/TTS app skeleton with FastAPI endpoints",
+          "assignee": "Dev A",
+          "service": "STT/TTS",
+          "dependencies": ["S1-02"],
+          "status": "partial",
+          "notes": "STT and TTS CLI scripts exist at `RoboHack/stt.py` and `RoboHack/tts.py`, but FastAPI endpoints are not implemented."
+        },
+        {
+          "id": "S1-05",
+          "title": "Implement STT interface using SpeechT5 for batch inference",
+          "assignee": "Dev A",
+          "service": "STT/TTS",
+          "dependencies": ["S1-04"],
+          "status": "open",
+          "notes": "Current STT uses `speech_recognition` in `RoboHack/stt.py`. SpeechT5 integration not present."
+        },
+        {
+          "id": "S1-06",
+          "title": "Implement TTS interface using SpeechT5 for synthesis",
+          "assignee": "Dev A",
+          "service": "STT/TTS",
+          "dependencies": ["S1-04"],
+          "status": "partial",
+          "notes": "A basic TTS implementation using `pyttsx3` exists at `RoboHack/tts.py`. SpeechT5-based synthesis not implemented."
+        },
+        {
+          "id": "S1-07",
+          "title": "Build FrameBuffer class with time-weighted sampling logic",
+          "assignee": "Dev B",
+          "service": "VLM Server",
+          "dependencies": ["S1-03"],
+          "status": "open",
+          "notes": "`RoboHack/vlm_server/frame_buffer.py` not present."
+        },
+        {
+          "id": "S1-08",
+          "title": "Set up VLM FastAPI skeleton with /prompt route",
+          "assignee": "Dev B",
+          "service": "VLM Server",
+          "dependencies": ["S1-03"],
+          "status": "open",
+          "notes": "VLM server files not present under `RoboHack/vlm_server`."
+        },
+        {
+          "id": "S1-09",
+          "title": "Create PolicyServer skeleton subclassing LeRobot PolicyServer",
+          "assignee": "Dev C",
+          "service": "PolicyServer",
+          "dependencies": ["S1-02"],
+          "status": "open",
+          "notes": "`RoboHack/server/policy_server.py` not present. Only `RoboHack/server/__init__.py` exists."
+        },
+        {
+          "id": "S1-10",
+          "title": "Create RobotClient subclass using LeRobot RobotClient",
+          "assignee": "Dev D",
+          "service": "PolicyServer",
+          "dependencies": ["S1-09"],
+          "status": "done",
+          "notes": "A RobotClient script exists at `RoboHack/client/robot_client.py` which implements client behaviour and uses `lerobot.async_inference.robot_client.RobotClient`."
+        }
+      ]
+    },
+    {
+      "name": "Sprint 2 – Service Integration and Messaging",
+      "duration": "2 weeks",
+      "goals": "Connect VLM → PolicyServer → RobotClient pipeline and implement streaming logic.",
+      "subtasks": [
+        {
+          "id": "S2-01",
+          "title": "Implement POST /action endpoint in VLM for PolicyServer communication",
+          "assignee": "Dev B",
+          "service": "VLM Server",
+          "dependencies": ["S1-08"],
+          "status": "open",
+          "notes": "VLM endpoints not implemented."
+        },
+        {
+          "id": "S2-02",
+          "title": "Integrate STT output flow to VLM input",
+          "assignee": "Dev A",
+          "service": "STT/TTS",
+          "dependencies": ["S1-05", "S1-08"],
+          "status": "open",
+          "notes": "STT exists as a CLI but pipeline integration is not implemented."
+        },
+        {
+          "id": "S2-03",
+          "title": "Integrate VLM response with TTS audio synthesis",
+          "assignee": "Dev A",
+          "service": "STT/TTS",
+          "dependencies": ["S1-06", "S1-08"],
+          "status": "open",
+          "notes": "TTS exists locally but VLM integration is missing."
+        },
+        {
+          "id": "S2-04",
+          "title": "Implement VLM → PolicyServer JSON message format and network client",
+          "assignee": "Dev B",
+          "service": "VLM Server",
+          "dependencies": ["S1-08", "S1-09"],
+          "status": "open",
+          "notes": "No VLM client or messaging implemented yet."
+        },
+        {
+          "id": "S2-05",
+          "title": "Implement PolicyServer.on_message() for action interpretation",
+          "assignee": "Dev C",
+          "service": "PolicyServer",
+          "dependencies": ["S1-09", "S2-04"],
+          "status": "open",
+          "notes": "PolicyServer not present in repo."
+        },
+        {
+          "id": "S2-06",
+          "title": "Stream commands asynchronously from PolicyServer → RobotClient",
+          "assignee": "Dev C",
+          "service": "PolicyServer",
+          "dependencies": ["S2-05", "S1-10"],
+          "status": "open",
+          "notes": "Streaming pipeline not implemented."
+        },
+        {
+          "id": "S2-07",
+          "title": "Implement RobotClient.observe() mock for simulated feedback",
+          "assignee": "Dev D",
+          "service": "RobotClient",
+          "dependencies": ["S1-10"],
+          "status": "open",
+          "notes": "Client code exists under `RoboHack/client/robot_client.py` but no `observe()` mock in server-side client."
+        },
+        {
+          "id": "S2-08",
+          "title": "Integrate EventRouter for internal task queues per service",
+          "assignee": "Dev B",
+          "service": "Common",
+          "dependencies": ["S1-03"],
+          "status": "open",
+          "notes": "EventRouter implementation missing."
+        },
+        {
+          "id": "S2-09",
+          "title": "Write unit tests for VLM, PolicyServer, and RobotClient modules",
+          "assignee": "Dev D",
+          "service": "Testing",
+          "dependencies": ["S2-04", "S2-06"],
+          "status": "partial",
+          "notes": "A repository-level presence test was added at `tests/test_sprints_subtasks.py` and pytest config `pytest.ini` + `tests/conftest.py` were created. More targeted unit tests are still needed."
+        },
+        {
+          "id": "S2-10",
+          "title": "Add logging and JSON message validation middleware",
+          "assignee": "Dev C",
+          "service": "PolicyServer",
+          "dependencies": ["S2-06"],
+          "status": "open",
+          "notes": "Not implemented."
+        }
+      ]
+    },
+    {
+      "name": "Sprint 3 – Full Pipeline and World Model Extension",
+      "duration": "2 weeks",
+      "goals": "Achieve a working end-to-end demo and prepare framework extensibility.",
+      "subtasks": [
+        {
+          "id": "S3-01",
+          "title": "Run full speech → VLM → PolicyServer → RobotClient pipeline test",
+          "assignee": "Dev D",
+          "service": "Integration",
+          "dependencies": ["S2-06", "S2-07", "S2-09"],
+          "status": "open",
+          "notes": "Pipeline not implemented; requires multiple upstream subtasks."
+        },
+        {
+          "id": "S3-02",
+          "title": "Optimize model concurrency using asyncio task groups",
+          "assignee": "Dev B",
+          "service": "Performance",
+          "dependencies": ["S2-04"],
+          "status": "open"
+        },
+        {
+          "id": "S3-03",
+          "title": "Add mock World Model interface (textual scene representation)",
+          "assignee": "Dev C",
+          "service": "VLM/WM",
+          "dependencies": ["S2-04", "S3-01"],
+          "status": "open"
+        },
+        {
+          "id": "S3-04",
+          "title": "Add health checks and /version endpoints for all services",
+          "assignee": "Dev A",
+          "service": "DevOps",
+          "dependencies": ["S1-04", "S1-08", "S1-09"],
+          "status": "open",
+          "notes": "No health/version endpoints detected in repo."
+        },
+        {
+          "id": "S3-05",
+          "title": "Containerize services using Docker Compose",
+          "assignee": "Dev D",
+          "service": "Deployment",
+          "dependencies": ["S3-01", "S3-04"],
+          "status": "open"
+        },
+        {
+          "id": "S3-06",
+          "title": "Record and log real robot actions for training future policies",
+          "assignee": "Dev C",
+          "service": "PolicyServer",
+          "dependencies": ["S3-01"],
+          "status": "open"
+        },
+        {
+          "id": "S3-07",
+          "title": "Document developer API and runbook updates",
+          "assignee": "Dev A",
+          "service": "Docs",
+          "dependencies": ["S3-05"],
+          "status": "partial",
+          "notes": "Updated `.github/copilot-instructions.md` to prefer `uv run python -m pytest -q`. More docs updates may be needed."
+        }
+      ]
+    }
+  ]
+}
+{
+  "project": "RoboThinker Framework",
+  "version": "0.3-distributed",
+  "sprints": [
+    {
+      "name": "Sprint 1 – Core Setup and Interfaces",
+      "duration": "1 week",
+      "goals": "Set up basic services, shared utilities, and communication interfaces.",
+      "subtasks": [
+        {
+          "id": "S1-02",
+          "title": "Implement common/schemas.py for Prompt, Action, Feedback JSON models",
+          "assignee": "Dev A",
+          "service": "Common",
           "dependencies": ["S1-01"]
         },
         {

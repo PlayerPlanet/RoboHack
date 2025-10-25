@@ -1,5 +1,3 @@
-# robot_client.py
-
 import threading
 import time
 import numpy as np
