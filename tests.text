@@ -1,0 +1,38 @@
+Quick developer test instructions — short & direct
+
+System layout
+- Test runner: `RoboHack/interactive_test.py` (manual/interactive)
+- API server: `RoboHack/server.py` (FastAPI exposing /stt and /tts at http://localhost:8000)
+- Speech AI: `RoboHack/stt.py` (record & transcribe), `RoboHack/tts.py` (synthesize & play/save)
+
+Quick steps (PowerShell)
+1) Activate the virtual environment:
+  & .\.venv\Scripts\Activate.ps1
+
+2) Start the API server (new terminal, from package folder):
+  cd RoboHack\RoboHack
+  & ..\..\.venv\Scripts\python.exe server.py
+
+3) Interactive/manual tests (single terminal):
+  & .\.venv\Scripts\python.exe .\RoboHack\interactive_test.py
+  - Choose 1 to record+send audio to /stt (hold SPACE to record)
+  - Choose 2 to send text to /tts and hear the returned audio
+
+CLI quick commands (no server required for local CLI stt/tts):
+- Interactive STT (hold SPACE+R while speaking):
+  & .\.venv\Scripts\python.exe .\RoboHack\cli.py stt
+- Transcribe existing WAV file:
+  & .\.venv\Scripts\python.exe .\RoboHack\cli.py stt --file .\path\to\audio.wav
+- TTS speak text immediately:
+  & .\.venv\Scripts\python.exe .\RoboHack\cli.py tts --text "Hello"
+- TTS save to WAV file:
+  & .\.venv\Scripts\python.exe .\RoboHack\cli.py tts --text "Hello" --save .\out.wav
+
+Notes & tips
+- If keyboard-based recording doesn't respond, run PowerShell as Administrator (the `keyboard` package may need elevated permissions).
+- `interactive_test.py` will verify the API is running at http://localhost:8000 before tests.
+- Test artifacts and temporary files are stored under `RoboHack/test_files` during tests.
+- `RoboHack/test.py` (automated API test) has been removed; use `interactive_test.py` for manual checks.
+
+Need more changes?
+- Tell me if you want these instructions written to a README or converted into a PowerShell script for convenience.

@@ -6,8 +6,9 @@ from lerobot.async_inference.configs import RobotClientConfig
 from lerobot.async_inference.robot_client import RobotClient
 import gymnasium as gym
 import mediapipe as mp
+from lerobot.cameras import ColorMode, Cv2Rotation
 from lerobot.cameras.opencv import OpenCVCameraConfig
-from lerobot.robots.so101_follower import SO101FollowerConfig
+from lerobot.robots.so101_follower import SO101FollowerConfig, SO101Follower
 
 mp_drawing = mp.solutions.drawing_utils
 
@@ -15,7 +16,6 @@ SO101_PORT = "COM6"  #USB PORT
 SERVER_IP = "65.108.32.147"
 SERVER_PORT = 8000
 CAMERA_INDEX = 0
-
 
 
 
@@ -94,88 +94,101 @@ class FaceTrackerThread(threading.Thread):
 
 
 def main():
-    print("Connecting to idle mode env.")
-    try:
-
-        idle_env = gym.make(
-            "LeRobot-SO101-Follower-v0",
-            port=SO101_PORT,
-            camera_index=CAMERA_INDEX
-        )
-    except Exception as e:
-        print(f"Failed to connect on {SO101_PORT} with camera {CAMERA_INDEX}")
-        print(f"Error: {e}")
-        return
-
-    stop_event = threading.Event()
-    tracker_thread = FaceTrackerThread(env=idle_env, stop_event=stop_event)
-    tracker_thread.start()
-
-    print("\n Idle mode... ")
-    instruction = input("Enter task: ")
-
-    print("Command received. Stopping idle thread...")
-    stop_event.set()
-    tracker_thread.join()
-
-    idle_env.close()
-    print("Idle thread closed.")
-
-    if instruction.lower() in ('q', 'quit'):
-        print("Connection closed")
-        return
-
-    print("Connecting to OpenCV")
-
-    camera_cfg = {
-        "primary": OpenCVCameraConfig(
-            index_or_path=CAMERA_INDEX,
-            width=640,
-            height=480,
-            fps=30
-        ),
-    }
-
-    robot_cfg = SO101FollowerConfig(
-        port=SO101_PORT,
-        id="follower_so101",
-        cameras=camera_cfg
-    )
-
-    client_cfg = RobotClientConfig(
-        robot=robot_cfg,
-        server_address=f"{SERVER_IP}:{SERVER_PORT}",
-        policy_device="cuda",
-        policy_type="hf_policy",
-        pretrained_name_or_path="openvla/openvla-7b",
-        chunk_size_threshold=0.7,
-        actions_per_chunk=50,
-    )
-
-    client = RobotClient(client_cfg)
-
-    print(f"Connecting to server at {client_cfg.server_address}...")
-
-    if client.start():
-        print("Connected to server!")
-        action_receiver_thread = threading.Thread(target=client.receive_actions, daemon=True)
-        action_receiver_thread.start()
-
+    while True:
+        print("Connecting to idle mode env.")
         try:
-            print(f"Executing: '{instruction}'. Press Ctrl+C to stop.")
-            # 5. Run control loop with the task
-            client.control_loop(instruction)
 
-        except KeyboardInterrupt:
-            print("\nStopping...")
-        finally:
-            client.stop()
-            action_receiver_thread.join()
-            print("Robot client shut down.")
-    else:
-        print("Failed to connect to the policy server.")
+            idle_cam_config = {
+                "primary": OpenCVCameraConfig(
+                    index_or_path=CAMERA_INDEX,
+                    width=640,
+                    height=480,
+                    fps=15
+                ),
+            }
 
-    print("Task finished.")
+            idle_robot_cfg = SO101FollowerConfig(
+                port=SO101_PORT,
+                id="follower_so101_idle",
+                cameras=idle_cam_config
+            )
+
+            idle_env = idle_env = SO101Follower(idle_robot_cfg)
+            idle_env.connect()
+
+        except Exception as e:
+            print(f"Failed to connect on {SO101_PORT} with camera {CAMERA_INDEX}")
+            print(f"Error: {e}")
+            return
+
+        stop_event = threading.Event()
+        tracker_thread = FaceTrackerThread(env=idle_env, stop_event=stop_event)
+        tracker_thread.start()
+
+        print("\n Idle mode... ")
+        instruction = input("Enter task: ")
+
+        print("Command received. Stopping idle thread...")
+        stop_event.set()
+        tracker_thread.join()
+
+        idle_env.disconnect()
+        print("Idle thread closed.")
+
+        if instruction.lower() in ('q', 'quit'):
+            print("Connection closed")
+            return
+
+        print("Connecting to OpenCV")
+
+        camera_cfg = {
+            "primary": OpenCVCameraConfig(
+                index_or_path=CAMERA_INDEX,
+                width=640,
+                height=480,
+                fps=30
+            ),
+        }
+
+        robot_cfg = SO101FollowerConfig(
+            port=SO101_PORT,
+            id="follower_so101",
+            cameras=camera_cfg
+        )
+
+        client_cfg = RobotClientConfig(
+            robot=robot_cfg,
+            server_address=f"{SERVER_IP}:{SERVER_PORT}",
+            policy_device="cuda",
+            policy_type="hf_policy",
+            pretrained_name_or_path="openvla/openvla-7b",
+            chunk_size_threshold=0.7,
+            actions_per_chunk=50,
+        )
+
+        client = RobotClient(client_cfg)
+
+        print(f"Connecting to server at {client_cfg.server_address}...")
+
+        if client.start():
+            print("Connected to server!")
+            action_receiver_thread = threading.Thread(target=client.receive_actions, daemon=True)
+            action_receiver_thread.start()
+
+            try:
+                print(f"Executing: '{instruction}'. Press Ctrl+C to stop.")
+                client.control_loop(instruction)
+
+            except KeyboardInterrupt:
+                print("\nStopping...")
+            finally:
+                client.stop()
+                action_receiver_thread.join()
+                print("Robot client shut down.")
+        else:
+            print("Failed to connect to the policy server.")
+
+        print("Task finished.")
 
 
 if __name__ == "__main__":
