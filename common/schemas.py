@@ -15,7 +15,8 @@ class ActionType(str, Enum):
 
 
 class Prompt(BaseModel):
-    id: str = Field(..., description="Unique prompt id")
+    # `id` is optional in the docs examples; accept None and validate only when present
+    id: Optional[str] = Field(None, description="Optional unique prompt id")
     # According to robothinker_docs.md, `type` and `text` are required
     type: str = Field(..., description="Prompt semantic type (e.g. 'user_intent')")
     text: str = Field(..., description="Natural language text for the prompt")
@@ -26,6 +27,9 @@ class Prompt(BaseModel):
 
     @validator("id")
     def id_must_not_be_empty(cls, v: str) -> str:
+        # Allow None (id optional). If provided, require non-empty.
+        if v is None:
+            return v
         if not v or not v.strip():
             raise ValueError("id must be non-empty")
         return v
@@ -46,7 +50,8 @@ class Action(BaseModel):
     type: ActionType = Field(..., description="Action type")
     # payload is required per robothinker_docs.md; keep params as legacy mapping
     payload: Dict[str, Any] = Field(..., description="Action-specific payload (preferred name in docs)")
-    params: Dict[str, Any] = Field(default_factory=dict, description="Legacy params (kept for compatibility)")
+    # `params` is legacy and should be optional; prefer `payload` per docs.
+    params: Optional[Dict[str, Any]] = Field(default=None, description="Legacy params (kept for compatibility)")
     meta: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Optional metadata")
     confidence: Optional[float] = Field(None, ge=0.0, le=1.0, description="Confidence score")
     issued_by: Optional[str] = Field(None, description="Component that issued the action")
@@ -61,10 +66,11 @@ class Action(BaseModel):
     @root_validator(pre=True)
     def unify_payload(cls, values):
         # Accept legacy 'params' and map to 'payload' when needed, and keep both for compatibility
-        if "payload" not in values and "params" in values:
+        if "payload" not in values and "params" in values and values.get("params") is not None:
             values["payload"] = values.get("params", {})
         if "params" not in values and "payload" in values:
-            values["params"] = values.get("payload", {})
+            # mirror payload into params for backward compatibility
+            values["params"] = values.get("payload")
         return values
 
 
@@ -86,9 +92,12 @@ class Feedback(BaseModel):
     timestamp: datetime = Field(..., description="UTC timestamp")
 
     @validator("action_id")
-    def action_id_present(cls, v: str) -> str:
+    def action_id_present(cls, v: Optional[str]) -> Optional[str]:
+        # action_id is optional in the docs; only validate when present
+        if v is None:
+            return v
         if not v or not v.strip():
-            raise ValueError("action_id must be non-empty")
+            raise ValueError("action_id must be non-empty if provided")
         return v
 
     @validator("timestamp", pre=True, always=True)
