@@ -14,7 +14,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'client'))
 # Import patches - this auto-applies all fixes including Pi0 transformer check
 try:
     # When package is installed/available
-    import RoboHack.client.camera_fix   # type: ignore
+    from RoboHack.client.camera_fix import patch_pi0_config_validation  # type: ignore
+    patch_pi0_config_validation()
 except Exception:
     try:
         # When running from source, import the local module directly
