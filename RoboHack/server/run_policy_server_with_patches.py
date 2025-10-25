@@ -33,6 +33,15 @@ except Exception:
     except Exception:
         print("⚠️  Warning: groot patch could not be imported; groot policy may not work")
 
+# Import server debugging patch
+try:
+    import RoboHack.server.debug_server_observations  # type: ignore
+except Exception:
+    try:
+        import debug_server_observations  # type: ignore
+    except Exception:
+        print("⚠️  Warning: server debugging patch could not be imported")
+
 # Now we can safely import and run lerobot's policy server
 from lerobot.async_inference.configs import PolicyServerConfig
 from lerobot.async_inference.policy_server import serve
