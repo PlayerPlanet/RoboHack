@@ -3,7 +3,7 @@ FROM python:3.11-slim
 ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
-# Install system packages required for building some Python packages and OpenCV
+# Install system dependencies
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
        build-essential \
@@ -15,18 +15,19 @@ RUN apt-get update \
        ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy project metadata first for caching installs
+# Copy dependency files first for caching
 COPY pyproject.toml /app/
+COPY README.md /app/
 
-# Upgrade pip and install the package (this will pull dependencies listed in pyproject.toml)
+# Upgrade pip & install project dependencies (including grpcio and lerobot)
 RUN pip install --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir /app
+    pip install --no-cache-dir .
 
-# Copy the rest of the repository
+# Copy the rest of your codebase
 COPY . /app
 
-# Expose the default port used by the policy server
+# Expose policy server port
 EXPOSE 8000
 
-# Default command to run the policy server
+# Run the async policy server
 CMD ["python", "-m", "lerobot.async_inference.policy_server", "--host", "0.0.0.0", "--port", "8000"]
