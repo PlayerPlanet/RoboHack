@@ -21,6 +21,7 @@ dependencies = [
     "pip>=25.2",
     "lerobot>=0.4.0",
     "grpcio>=1.76.0",
+    "mediapipe>=0.10.14",
 ]
 
 [dependency-groups]
