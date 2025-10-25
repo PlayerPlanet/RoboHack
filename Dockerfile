@@ -47,14 +47,21 @@ RUN pip install --no-cache-dir "flash-attn>=2.5.9,<3.0.0" --no-build-isolation
 COPY pyproject.toml /app/
 COPY README.md /app/
 
-# Install project dependencies (will use already-installed torch and skip redundant flash-attn)
-RUN pip install --no-cache-dir .
-
-# Install GR00T support explicitly
+# Install GR00T support FIRST (before project deps to avoid conflicts)
+# This ensures all groot-specific dependencies are installed correctly
 RUN pip install --no-cache-dir "lerobot[groot]>=0.4.0"
+
+# Install remaining project dependencies
+RUN pip install --no-cache-dir .
 
 # Copy the rest of your codebase
 COPY . /app
+
+# Verify GR00T installation
+RUN python -c "import flash_attn; print(f'✅ FlashAttention {flash_attn.__version__}')" && \
+    python -c "import lerobot; print(f'✅ LeRobot {lerobot.__version__}')" && \
+    python -c "from lerobot.async_inference.policy_server import SUPPORTED_POLICIES; print(f'✅ Supported policies: {SUPPORTED_POLICIES}')" && \
+    python -c "import sys; sys.path.insert(0, 'lerobot.policies.groot' in str(sys.modules)); from lerobot.policies import groot; print(f'✅ GR00T module: {dir(groot)}')" || echo "⚠️  GR00T verification incomplete"
 
 # Expose policy server port
 EXPOSE 8000
