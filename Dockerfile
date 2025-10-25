@@ -33,9 +33,15 @@ RUN pip install --no-cache-dir \
     "torch>=2.2.1,<2.8.0" \
     "torchvision>=0.21.0,<0.23.0"
 
-# Install FlashAttention (requires torch to be installed first)
-RUN pip install --no-cache-dir ninja "packaging>=24.2,<26.0" && \
-    pip install --no-cache-dir "flash-attn>=2.5.9,<3.0.0" --no-build-isolation
+# Install FlashAttention build dependencies
+RUN pip install --no-cache-dir \
+    ninja \
+    "packaging>=24.2,<26.0" \
+    psutil \
+    setuptools
+
+# Install FlashAttention (requires torch + build deps to be installed first)
+RUN pip install --no-cache-dir "flash-attn>=2.5.9,<3.0.0" --no-build-isolation
 
 # Copy dependency files
 COPY pyproject.toml /app/
