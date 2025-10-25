@@ -143,6 +143,7 @@ def main_loop():
                     f.write(final_task)
                 print(f"Task saved to {TASK_FILE}")
 
+
                 # Confirm task and end
                 text_to_speech_and_play(f"Okay, I will {final_task}.")
                 print("Conversation ended.")
