@@ -104,7 +104,55 @@ def patch_pi0_transformers_check():
         print("⚠️  Warning: Could not patch transformers - siglip module not found")
 
 
+def patch_pi0_config_validation():
+    """Patch PI0Config to ignore extra finetuning-specific fields.
+    
+    Some fine-tuned PI0 models (like mizutoukotori/pi0_so101_v6) include extra
+    config fields that were used during training but aren't part of the base
+    PI0Config. This patch makes the config more permissive.
+    """
+    try:
+        from lerobot.policies.pi0.configuration_pi0 import PI0Config
+        # Store original __init__
+        original_init = PI0Config.__init__
+        
+        def patched_init(self, **kwargs):
+            """Filter out extra fields before calling original __init__."""
+            # Fields that are training-specific and should be ignored at inference
+            extra_fields = {
+                'resize_imgs_with_padding',
+                'adapt_to_pi_aloha',
+                'use_delta_joint_actions_aloha',
+                'proj_width',
+                'num_steps',
+                'use_cache',
+                'attention_implementation',
+                'freeze_vision_encoder',
+                'train_expert_only',
+                'train_state_proj',
+            }
+            
+            # Remove extra fields from kwargs
+            filtered_kwargs = {k: v for k, v in kwargs.items() if k not in extra_fields}
+            
+            # Log if we removed any fields
+            removed = set(kwargs.keys()) - set(filtered_kwargs.keys())
+            if removed:
+                print(f"✅ Filtered out fine-tuning config fields: {removed}")
+            
+            # Call original __init__ with filtered kwargs
+            original_init(self, **filtered_kwargs)
+        
+        # Replace __init__
+        PI0Config.__init__ = patched_init
+        print("✅ Patched PI0Config to ignore fine-tuning fields")
+        
+    except ImportError:
+        print("⚠️  Warning: Could not patch PI0Config - module not found")
+
+
 # Auto-apply all patches when this module is imported
 patch_opencv_backend()
 patch_grpc_limits()
 patch_pi0_transformers_check()
+patch_pi0_config_validation()
