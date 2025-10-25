@@ -25,7 +25,7 @@ class FaceTrackerThread(threading.Thread):
         self.mp_face_detection = mp.solutions.face_detection
 
         self.P_GAIN_YAW = -0.1
-        self.P_GAIN_Z = -0.8
+        self.P_GAIN_Z = -0.1
 
     def run(self):
         print("Starting idle facetracking routine")
@@ -71,7 +71,7 @@ class FaceTrackerThread(threading.Thread):
 
                     cv2.imshow(window_name, image_display)
 
-                    if cv2.waitKey(1) & 0xFF == 27:  # 27 is the ESC key
+                    if cv2.waitKey(1) & 0xFF == 27:  
                         self.stop_event.set()
                         break
 
@@ -80,7 +80,7 @@ class FaceTrackerThread(threading.Thread):
                     if terminated or truncated:
                         obs, info = self.env.reset()
 
-                    time.sleep(0.02)  # ~50 Hz loop
+                    time.sleep(0.02) 
 
         finally:
             print("Stopping idle process")
