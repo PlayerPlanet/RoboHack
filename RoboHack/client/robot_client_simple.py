@@ -5,21 +5,19 @@ import time
 import sys
 from pathlib import Path
 
-# Add project root to path if needed
 project_root = Path(__file__).parent.parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-# CRITICAL: Import camera fix BEFORE any lerobot imports to patch OpenCV backend
+# CRITICAL: Import patches BEFORE any lerobot imports
 from RoboHack.client.camera_fix import patch_opencv_backend
 
 from lerobot.async_inference.configs import RobotClientConfig
 from lerobot.async_inference.robot_client import RobotClient
 from lerobot.cameras.opencv import OpenCVCameraConfig
 from lerobot.cameras.camera import CameraConfig
-from lerobot.robots.so101_follower import SO101FollowerConfig
+from lerobot.robots.so100_follower import SO100FollowerConfig
 
-# mp_drawing = mp.solutions.drawing_utils
 
 SO101_PORT = "COM6"
 SERVER_IP = "65.108.32.147"
@@ -104,48 +102,48 @@ class FaceTrackerThread(threading.Thread):
 def main(task):
 
     while True:
-
         instruction = input("\nEnter task (or 'q' to quit): ")
-
-        if instruction.lower() in ('q', 'quit'):
+        if instruction.lower() in ("q", "quit"):
             print("Exiting...")
             break
 
         print("Initializing client...")
 
         camera_cfg: dict[str, CameraConfig] = {
-            "primary": OpenCVCameraConfig(
+            "image": OpenCVCameraConfig(
                 index_or_path=CAMERA_INDEX,
                 width=640,
                 height=480,
-                fps=15
+                fps=15,
             )
         }
 
-        robot_cfg = SO101FollowerConfig(
+        robot_cfg = SO100FollowerConfig(
             port=SO101_PORT,
             id="follower_so101",
-            cameras=camera_cfg
+            cameras=camera_cfg,
         )
-        
 
         client_cfg = RobotClientConfig(
             robot=robot_cfg,
             server_address=f"{SERVER_IP}:{SERVER_PORT}",
             policy_device="cuda",
-            policy_type="pi05",  # Pi0.5 policy
-            pretrained_name_or_path="lerobot/pi0_libero_finetuned",  # Pi0.5 finetuned model
+            policy_type="smolvla",  # Diffusion policy - flexible with action dims
+            pretrained_name_or_path="lerobot/smolvla_base",  # Diffusion model
             chunk_size_threshold=0.7,
             actions_per_chunk=50,
         )
 
+        # Create client (SO101 is already patched for Pi0.5 compatibility)
         client = RobotClient(client_cfg)
 
         print(f"Connecting to server at {client_cfg.server_address}...")
 
         if client.start():
             print("Connected to server!")
-            action_receiver_thread = threading.Thread(target=client.receive_actions, daemon=True)
+            action_receiver_thread = threading.Thread(
+                target=client.receive_actions, daemon=True
+            )
             action_receiver_thread.start()
 
             try:
