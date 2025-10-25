@@ -29,5 +29,6 @@ COPY . /app
 # Expose policy server port
 EXPOSE 8000
 
-# Run the async policy server
-CMD ["python", "-m", "lerobot.async_inference.policy_server", "--host", "0.0.0.0", "--port", "8000"]
+# Run the async policy server with patches applied
+# The wrapper script imports camera_fix.py which applies the Pi0 transformer check bypass
+CMD ["python", "RoboHack/server/run_policy_server_with_patches.py", "policy-server", "--host", "0.0.0.0", "--port", "8000"]
