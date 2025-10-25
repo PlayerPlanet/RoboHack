@@ -109,46 +109,102 @@ def patch_pi0_config_validation():
     
     Some fine-tuned PI0 models (like mizutoukotori/pi0_so101_v6) include extra
     config fields that were used during training but aren't part of the base
-    PI0Config. This patch makes the config more permissive.
+    PI0Config. This patch makes the config more permissive by intercepting
+    the from_dict() method which is called when loading from HuggingFace.
     """
+    PI0Config = None
+    
+    # Try different import paths (lerobot structure has changed over time)
+    import_paths = [
+        "lerobot.policies.pi0.configuration_pi0",
+        "lerobot.policy.pi0.configuration_pi0",
+        "lerobot.common.policies.pi0.configuration_pi0",
+    ]
+    
+    for import_path in import_paths:
+        try:
+            parts = import_path.split('.')
+            module_path = '.'.join(parts[:-1])
+            class_name = parts[-1]
+            
+            module = __import__(module_path, fromlist=[class_name])
+            PI0Config = getattr(module, 'PI0Config')
+            print(f"✅ Found PI0Config at {import_path}")
+            break
+        except (ImportError, AttributeError):
+            continue
+    
+    if PI0Config is None:
+        print("⚠️  Warning: Could not find PI0Config in any known location")
+        return
+    
+    # Fields that are training-specific and should be ignored at inference
+    EXTRA_FIELDS = {
+        'resize_imgs_with_padding',
+        'adapt_to_pi_aloha',
+        'use_delta_joint_actions_aloha',
+        'proj_width',
+        'num_steps',
+        'use_cache',
+        'attention_implementation',
+        'freeze_vision_encoder',
+        'train_expert_only',
+        'train_state_proj',
+    }
+    
+    # Patch __init__ to filter kwargs
+    original_init = PI0Config.__init__
+    
+    def patched_init(self, **kwargs):
+        """Filter out extra fields before calling original __init__."""
+        filtered_kwargs = {k: v for k, v in kwargs.items() if k not in EXTRA_FIELDS}
+        removed = set(kwargs.keys()) - set(filtered_kwargs.keys())
+        if removed:
+            print(f"✅ [__init__] Filtered out: {removed}")
+        original_init(self, **filtered_kwargs)
+    
+    # Patch from_dict (this is what HuggingFace uses to load configs)
+    if hasattr(PI0Config, 'from_dict'):
+        original_from_dict = PI0Config.from_dict
+        
+        @classmethod
+        def patched_from_dict(cls, config_dict, **kwargs):
+            """Filter out extra fields from config_dict before validation."""
+            if isinstance(config_dict, dict):
+                filtered_dict = {k: v for k, v in config_dict.items() if k not in EXTRA_FIELDS}
+                removed = set(config_dict.keys()) - set(filtered_dict.keys())
+                if removed:
+                    print(f"✅ [from_dict] Filtered out: {removed}")
+                return original_from_dict(filtered_dict, **kwargs)
+            return original_from_dict(config_dict, **kwargs)
+        
+        PI0Config.from_dict = patched_from_dict
+    
+    # Also patch the parent class's attribute validation if it exists
+    # This catches validation that happens in PretrainedConfig
     try:
-        from lerobot.policies.pi0.configuration_pi0 import PI0Config
-        # Store original __init__
-        original_init = PI0Config.__init__
-        
-        def patched_init(self, **kwargs):
-            """Filter out extra fields before calling original __init__."""
-            # Fields that are training-specific and should be ignored at inference
-            extra_fields = {
-                'resize_imgs_with_padding',
-                'adapt_to_pi_aloha',
-                'use_delta_joint_actions_aloha',
-                'proj_width',
-                'num_steps',
-                'use_cache',
-                'attention_implementation',
-                'freeze_vision_encoder',
-                'train_expert_only',
-                'train_state_proj',
-            }
+        from transformers.configuration_utils import PretrainedConfig
+        if hasattr(PretrainedConfig, '__init__'):
+            original_pretrained_init = PretrainedConfig.__init__
             
-            # Remove extra fields from kwargs
-            filtered_kwargs = {k: v for k, v in kwargs.items() if k not in extra_fields}
+            def patched_pretrained_init(self, **kwargs):
+                """Filter extra fields before PretrainedConfig validation."""
+                # Only filter if this is being called from PI0Config
+                if self.__class__.__name__ == 'PI0Config':
+                    filtered_kwargs = {k: v for k, v in kwargs.items() if k not in EXTRA_FIELDS}
+                    removed = set(kwargs.keys()) - set(filtered_kwargs.keys())
+                    if removed:
+                        print(f"✅ [PretrainedConfig] Filtered out: {removed}")
+                    original_pretrained_init(self, **filtered_kwargs)
+                else:
+                    original_pretrained_init(self, **kwargs)
             
-            # Log if we removed any fields
-            removed = set(kwargs.keys()) - set(filtered_kwargs.keys())
-            if removed:
-                print(f"✅ Filtered out fine-tuning config fields: {removed}")
-            
-            # Call original __init__ with filtered kwargs
-            original_init(self, **filtered_kwargs)
-        
-        # Replace __init__
-        PI0Config.__init__ = patched_init
-        print("✅ Patched PI0Config to ignore fine-tuning fields")
-        
+            PretrainedConfig.__init__ = patched_pretrained_init
     except ImportError:
-        print("⚠️  Warning: Could not patch PI0Config - module not found")
+        pass
+    
+    PI0Config.__init__ = patched_init
+    print("✅ Patched PI0Config.__init__ and from_dict() to ignore fine-tuning fields")
 
 
 # Auto-apply all patches when this module is imported
