@@ -147,3 +147,4 @@ async def text_to_speech(request: TTSRequest):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(apphost="0.0.0.0", port=8000)
+
