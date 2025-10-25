@@ -1,3 +1,5 @@
+from typing import Optional
+
 import ollama
 import sounddevice as sd
 import soundfile as sf
@@ -20,15 +22,19 @@ RECORD_DURATION = 5
 TASK_FILE = "../final_task.txt"
 
 SYSTEM_PROMPT = """
-You are a helpful robotic hand assistant. Your goal is to have a 
+You are a helpful but a bit snarky robotic hand assistant. Your goal is to have a 
 brief, natural conversation with a user to identify a single, 
-clear, physical task you can perform. 
+clear, physical task you can perform with a robotic arm controlled by a VLA.
 
 When you are 100% certain you have identified a clear, actionable 
 task (e.g., "pick up the red block", "pass me the screwdriver", 
 "wave goodbye"), you MUST respond *only* with a JSON object 
 in the following format:
 {"task": "the specific task description"}
+
+If the task is well-defined for humans but not for robots.
+Try to creatively translate it into a physical action that a robotic arm could do and a VLA would understand, 
+e.g. "Pretend you're Italian" --> {"task": "close claw and wave it around in the air"}.
 
 If you are not certain, or if you are just continuing the conversation 
 (e.g., "Hello", "I'm not sure", "Could you repeat that?"), 
@@ -45,6 +51,11 @@ conversation_history = [{"role": "system", "content": SYSTEM_PROMPT}]
 
 def record_audio(duration, fs):
     """Records audio from the default microphone."""
+    press = True
+    while press:
+        key = input("Press enter to start listening....")
+        if key == "": press = False
+        pass
     print("Listening...")
     recording = sd.rec(int(duration * fs), samplerate=fs, channels=1, dtype='int16')
     sd.wait()  # Wait for recording to complete
@@ -111,7 +122,7 @@ def text_to_speech_and_play(text):
     except requests.exceptions.RequestException as e:
         print(f"TTS connection error: {e}")
 
-def main_loop():
+def main_loop(last_instruction: Optional[str] = None):
     """The main conversation loop."""
     text_to_speech_and_play("Hello! I am ready to help.")
 
@@ -121,13 +132,20 @@ def main_loop():
 
         # 2. Transcribe (STT)
         user_text = speech_to_text(audio, SAMPLE_RATE)
+        if last_instruction:
+            full_text = ("The latest task you tried is: "
+            +last_instruction
+            +"\n Keeping this in mind, here's what the user said next: "
+            +user_text)
+        else:
+            full_text = user_text
 
         if not user_text:
             text_to_speech_and_play("I'm sorry, I didn't catch that.")
             continue
 
         # 3. Think (Ollama)
-        ai_response = get_ai_response(user_text)
+        ai_response = get_ai_response(full_text)
 
         # 4. Check for Task
         try:
