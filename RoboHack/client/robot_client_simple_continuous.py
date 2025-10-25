@@ -4,6 +4,10 @@ import threading
 import time
 import numpy as np
 import cv2
+
+# CRITICAL: Import patches BEFORE any lerobot imports
+from RoboHack.client.camera_fix import patch_opencv_backend
+
 from lerobot.async_inference.configs import RobotClientConfig
 from lerobot.async_inference.robot_client import RobotClient
 from lerobot.cameras import CameraConfig
@@ -15,7 +19,7 @@ import conversation_hub
 SO101_PORT = "COM6"
 SERVER_IP = "65.108.32.147"
 SERVER_PORT = 8000
-CAMERA_INDEX = 1
+CAMERA_INDEX = 0
 
 
 def main():
@@ -23,13 +27,19 @@ def main():
     print("Initializing robot and client configurations...")
 
     camera_cfg: dict[str, CameraConfig] = {
-        "primary": OpenCVCameraConfig(
-            index_or_path=CAMERA_INDEX,
-            width=640,
-            height=480,
-            fps=15
-        )
-    }
+            "handeye": OpenCVCameraConfig(
+                index_or_path=CAMERA_INDEX,
+                width=640,
+                height=360,
+                fps=30,
+            ),
+            "fixed": OpenCVCameraConfig(
+                index_or_path=1,
+                width=640,
+                height=360,
+                fps=30,
+            )
+        }
 
     # 2. Create robot config
     robot_cfg = SO101FollowerConfig(
@@ -44,7 +54,7 @@ def main():
         server_address=f"{SERVER_IP}:{SERVER_PORT}",
         policy_device="cuda",
         policy_type="smolvla",  # Diffusion policy - flexible with action dims
-        pretrained_name_or_path="lerobot/smolvla_base",  # Diffusion model
+        pretrained_name_or_path="y1y2y3/so101_test8_smolvla200k_augmented100",  # Diffusion model
         chunk_size_threshold=0.7,
         actions_per_chunk=50,
     )

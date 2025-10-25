@@ -21,7 +21,6 @@ dependencies = [
     "pip>=25.2",
     "lerobot[feetech]>=0.4.0",
     "grpcio>=1.76.0",
-    "protobuf>=6.3",
     "networkx>=3.5",
     "pydantic>=1.10,<2.0",
     "ollama>=0.3.3",
@@ -30,11 +29,8 @@ dependencies = [
     "scipy>=1.16.2",
     "packaging>=24.2,<26.0",
     "num2words>=0.5.14",
+    "mediapipe>=0.10.14",
 ]
-
-[tool.uv.extra-build-dependencies]
-# FlashAttention requires torch as build dependency
-flash-attn = ["torch>=2.2.0"]
 
 [dependency-groups]
 dev = [

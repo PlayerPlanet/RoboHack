@@ -16,7 +16,7 @@ from lerobot.async_inference.configs import RobotClientConfig
 from lerobot.async_inference.robot_client import RobotClient
 from lerobot.cameras.opencv import OpenCVCameraConfig
 from lerobot.cameras.camera import CameraConfig
-from lerobot.robots.so100_follower import SO100FollowerConfig
+from lerobot.robots.so101_follower import SO101FollowerConfig
 
 
 SO101_PORT = "COM6"
@@ -109,27 +109,35 @@ def main():
 
         print("Initializing client...")
 
+        # Model was trained with 'handeye' and 'fixed' cameras at 640x360 resolution
+        # Since we only have one physical camera, we'll use it for both
         camera_cfg: dict[str, CameraConfig] = {
-            "image": OpenCVCameraConfig(
+            "handeye": OpenCVCameraConfig(
                 index_or_path=CAMERA_INDEX,
                 width=640,
-                height=480,
-                fps=15,
+                height=360,
+                fps=30,
+            ),
+            "fixed": OpenCVCameraConfig(
+                index_or_path=1,
+                width=640,
+                height=360,
+                fps=30,
             )
         }
 
-        robot_cfg = SO100FollowerConfig(
+        robot_cfg = SO101FollowerConfig(
             port=SO101_PORT,
             id="follower_so101",
-            cameras=camera_cfg,
+            cameras=camera_cfg
         )
 
         client_cfg = RobotClientConfig(
             robot=robot_cfg,
             server_address=f"{SERVER_IP}:{SERVER_PORT}",
-            policy_device="cuda",
+            policy_device="cpu",  # Client runs on CPU (server has the GPU)
             policy_type="smolvla",  # Diffusion policy - flexible with action dims
-            pretrained_name_or_path="lerobot/smolvla_base",  # Diffusion model
+            pretrained_name_or_path="y1y2y3/so101_test8_smolvla200k_augmented100",  # Diffusion model
             chunk_size_threshold=0.7,
             actions_per_chunk=50,
         )
