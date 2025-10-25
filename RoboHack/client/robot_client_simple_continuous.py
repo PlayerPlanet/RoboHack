@@ -41,9 +41,9 @@ def main():
     client_cfg = RobotClientConfig(
         robot=robot_cfg,
         server_address=f"{SERVER_IP}:{SERVER_PORT}",
-        policy_device="cuda",  # Device for the *server*
-        policy_type="hf_policy",
-        pretrained_name_or_path="openvla/openvla-7b",
+        policy_device="cuda",
+        policy_type="smolvla",  # Diffusion policy - flexible with action dims
+        pretrained_name_or_path="lerobot/smolvla_base",  # Diffusion model
         chunk_size_threshold=0.7,
         actions_per_chunk=50,
     )
@@ -81,20 +81,22 @@ def main():
 
             # --- PHASE 3: Task Execution Loop (for one task) ---
 
-            # Get first observation and send it to server
-            # Note: We use .get_observation() because it's not a gym env
+
             obs = robot.get_observation()
-            info = {}  # Create a dummy info dict
-            client.send_observation(obs, instruction)
+            obs_with_instruction = obs.copy()
+            obs_with_instruction["instruction"] = instruction
+            info = {}
+
+            client.send_observation(obs_with_instruction)
 
             task_running = True
             while task_running:
                 # Get an action from the server (this waits)
-                action = client.get_action()
+                action = client.action_queue.get()
                 if action is None:
                     print("Task finished (received None action).")
                     task_running = False
-                    break  # Exit the *task* loop
+                    break
 
                 # Apply the action to the robot
                 obs, reward, terminated, truncated, info = robot.step(action)
@@ -110,21 +112,19 @@ def main():
                 if cv2.waitKey(1) & 0xFF == 27:  # 27 is the ESC key
                     print("Task cancelled by user.")
                     task_running = False
-                    break  # Exit the *task* loop
-                # ------------------------------
+                    break
 
                 if terminated or truncated:
                     print("Task finished (episode ended).")
                     task_running = False
-                    break  # Exit the *task* loop
+                    break
 
             print("\nTask complete. Ready for new task.")
-            # The outer 'while True' loop will now repeat
+
 
     except KeyboardInterrupt:
         print("\nStopping...")
     finally:
-        # --- PHASE 4: SHUTDOWN (Done ONCE) ---
         cv2.destroyAllWindows()
         client.stop()
         action_receiver_thread.join()
