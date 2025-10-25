@@ -6,7 +6,7 @@ import requests
 import io
 import os
 import json
-from client import robot_client_simple
+
 
 
 # --- Configuration ---
@@ -17,7 +17,7 @@ OLLAMA_MODEL = "qwen2.5vl:7b"
 
 SAMPLE_RATE = 16000
 RECORD_DURATION = 5
-TASK_FILE = "final_task.txt"
+TASK_FILE = "../final_task.txt"
 
 SYSTEM_PROMPT = """
 You are a helpful robotic hand assistant. Your goal is to have a 
@@ -156,6 +156,3 @@ def main_loop():
 if __name__ == "__main__":
     while True:
         main_loop()
-        with open(TASK_FILE, "r") as f:
-            task_data = f.read()
-        robot_client_simple.main(task_data)

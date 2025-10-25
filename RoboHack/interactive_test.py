@@ -175,7 +175,7 @@ def main():
     if not check_server():
         print("\nPlease start the server first:")
         print("cd RoboHack\\RoboHack")
-        print("& ..\\..\\venv\\Scripts\\python.exe server.py")
+        print("& ..\\..\\venv\\Scripts\\python.exe server_TTS.py")
         return
     
     while True:
