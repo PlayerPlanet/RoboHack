@@ -16,7 +16,7 @@ dependencies = [
     "torch>=2.2.0",
     "safetensors>=0.3.0",
     "bitsandbytes>=0.39.0 ; platform_system != 'Darwin'",
-    "timm>=0.9.10,<1.0.0",
+    "timm>=1.0.0,<1.1.0",
     "uv>=0.9.5",
     "pip>=25.2",
     "lerobot[feetech]>=0.4.0",
@@ -24,7 +24,13 @@ dependencies = [
     "protobuf>=6.3",
     "networkx>=3.5",
     "pydantic>=1.10,<2.0",
+    "ninja>=1.11.1 ; platform_system == 'Linux'",
+    "packaging>=24.2,<26.0",
 ]
+
+[tool.uv.extra-build-dependencies]
+# FlashAttention requires torch as build dependency
+flash-attn = ["torch>=2.2.0"]
 
 [dependency-groups]
 dev = [
