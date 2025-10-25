@@ -6,7 +6,15 @@ services:
       - "8000:8000"
     environment:
       - PYTHONUNBUFFERED=1
+      - HF_TOKEN=${HF_TOKEN}  # HuggingFace token for gated models (paligemma)
     restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
 
   ollama:
     image: ollama/ollama:latest
