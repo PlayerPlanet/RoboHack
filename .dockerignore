@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.venv/
+env/
+build/
+dist/
+.git/
+outputs/
+__pycache__/
+*.egg-info/
+*.egg
+*.pytest_cache/
+pip-wheel-metadata/
