@@ -10,6 +10,7 @@ from lerobot.cameras import CameraConfig
 from lerobot.cameras.opencv import OpenCVCameraConfig
 # Import the actual robot class, not just the config
 from lerobot.robots.so101_follower import SO101Follower, SO101FollowerConfig
+import conversation_hub
 
 SO101_PORT = "COM6"
 SERVER_IP = "65.108.32.147"
@@ -72,7 +73,7 @@ def main():
     # --- PHASE 2: Main Instruction Loop ---
     try:
         while True:
-            instruction = input("\nEnter task (or 'q' to quit): ")
+            instruction = conversation_hub.main_loop()
             if instruction.lower() in ('q', 'quit'):
                 print("Exiting...")
                 break  # Exit the instruction loop

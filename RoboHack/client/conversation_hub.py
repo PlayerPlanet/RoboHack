@@ -152,6 +152,9 @@ def main_loop():
             # It's not JSON, so it's a normal chat response
             # 5. Speak (TTS)
             text_to_speech_and_play(ai_response)
+    with open(TASK_FILE, "r") as f:
+        task = f.read()
+    return task
 
 if __name__ == "__main__":
     while True:
