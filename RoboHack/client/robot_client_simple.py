@@ -99,7 +99,7 @@ class FaceTrackerThread(threading.Thread):
 """
 
 
-def main(task):
+def main():
 
     while True:
         instruction = input("\nEnter task (or 'q' to quit): ")
