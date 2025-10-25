@@ -29,7 +29,8 @@ dependencies = [
     "scipy>=1.16.2",
     "packaging>=24.2,<26.0",
     "num2words>=0.5.14",
-    "mediapipe>=0.10.14",
+    "protobuf>=6.3",
+    "mediapipe==0.10.14",
 ]
 
 [dependency-groups]
