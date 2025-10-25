@@ -6,6 +6,7 @@ import requests
 import io
 import os
 import json
+import base64
 from typing import Optional
 
 
@@ -42,6 +43,26 @@ You: {"task": "grab the small blue cube"}
 """
 
 conversation_history = [{"role": "system", "content": SYSTEM_PROMPT}]
+
+
+def attach_image_to_history(image_path: str) -> None:
+    """Read an image file and append a base64-encoded placeholder to the conversation history.
+
+    This is a conservative, non-breaking enhancement: it does not attempt to render or upload
+    full multimodal messages to Ollama (which may not be enabled). Instead it stores the
+    image inline as base64 so a downstream VLM or human operator can access it.
+    """
+    try:
+        with open(image_path, "rb") as f:
+            b = f.read()
+        b64 = base64.b64encode(b).decode("ascii")
+        # Insert a short marker message that an image was provided
+        conversation_history.append({"role": "user", "content": f"[image_base64:{b64}]"})
+        print(f"Attached image '{image_path}' to conversation history.")
+    except FileNotFoundError:
+        print(f"Image not found: {image_path}")
+    except Exception as e:
+        print(f"Failed to attach image: {e}")
 
 def record_audio(duration, fs):
     """Records audio from the default microphone."""
