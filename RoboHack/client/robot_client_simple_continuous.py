@@ -290,14 +290,14 @@ def main():
         # --- Animation Parameters ---
         # Speaking
         _jaw_frequency = 1.5
-        _jaw_amplitude = 0.6
+        _jaw_amplitude = 60
         _gesture_frequency = 0.5
-        _gesture_amplitude = 0.2
+        _gesture_amplitude = 20
         # Idle Sway
         _sway_frequency_lift = 0.1
         _sway_frequency_flex = 0.15
-        _sway_amplitude_lift = 0.03
-        _sway_amplitude_flex = 0.02
+        _sway_amplitude_lift = 3
+        _sway_amplitude_flex = 2
         # --------------------------
 
         # --- Build Action Dictionary ---
