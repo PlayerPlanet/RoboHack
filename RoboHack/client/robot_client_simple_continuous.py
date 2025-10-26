@@ -200,6 +200,13 @@ def main():
             if "elbow_flex.pos" in action_dict:
                 action_dict["elbow_flex.pos"] = float(sway_flex_value)
 
+            # Gripper alternates between -100 and 100 every 1 second
+            if "gripper.pos" in action_dict:
+                # Alternate based on integer seconds: even seconds = -100, odd seconds = 100
+                second = int(current_time) % 2
+                gripper_value = -100.0 if second == 0 else 100.0
+                action_dict["gripper.pos"] = gripper_value
+
         # --- Send action using send_action (NO CLIPPING - robot handles limits) ---
         try:
                 env.send_action(action_dict)
@@ -248,21 +255,86 @@ def main():
             # Control loop speed
             time.sleep(0.05)  # Run at ~20Hz
     
+    # --- Initialize EventRouter for conversation_hub ---
+    # Create an EventRouter and asyncio event loop to enable turn-status events
+    event_router = EventRouter()
+    event_loop = asyncio.new_event_loop()
+    
+    # Start the event loop in a background thread
+    def _run_event_loop(loop):
+        asyncio.set_event_loop(loop)
+        loop.run_forever()
+    
+    event_loop_thread = threading.Thread(target=_run_event_loop, args=(event_loop,), daemon=True)
+    event_loop_thread.start()
+    
+    # Configure conversation_hub to use this EventRouter
+    conversation_hub.set_event_router(event_router, event_loop)
+    print("EventRouter initialized and set for conversation_hub.")
+    
+    # --- Initialize robot for animations (outside of client/server connection) ---
+    # Create a standalone robot instance just for animations during conversation
+    print("Initializing robot for animations...")
+    animation_robot_cfg = SO101FollowerConfig(
+        port=SO101_PORT,
+        id="follower_so101_animations",
+        cameras=camera_cfg
+    )
+    animation_robot = SO101Follower(animation_robot_cfg)
+    
+    # Connect to the robot
+    print("Connecting animation robot...")
+    try:
+        animation_robot.connect()
+        print("Animation robot connected successfully.")
+    except Exception as e:
+        print(f"Error: Failed to connect animation robot: {e}")
+        print("Cannot proceed without robot connection.")
+        return
+    
+    # Move robot to home position before starting
+    print("Moving robot to home position...")
+    try:
+        animation_robot.send_action(home)
+        time.sleep(2.0)
+        print("Robot is now at home position.")
+    except Exception as e:
+        print(f"Warning: Could not send home action: {e}")
+    
+    # Start the stance consumer thread for animations
+    print("Starting animation stance consumer...")
+    async def _turn_status_listener():
+        q = await event_router.subscribe("turn_status")
+        while not stance_stop_event.is_set():
+            try:
+                msg = await asyncio.wait_for(q.get(), timeout=0.5)
+                stance_queue.put_nowait(msg)
+            except asyncio.TimeoutError:
+                continue
+            except Exception:
+                break
+    
+    # Schedule the listener on the event loop
+    asyncio.run_coroutine_threadsafe(_turn_status_listener(), event_loop)
+    
+    # Start consumer thread
+    animation_consumer_thread = threading.Thread(target=_stance_consumer, args=(animation_robot,), daemon=True)
+    animation_consumer_thread.start()
+    print("Animation stance consumer started.")
+    
     # --- PHASE 2: Main Instruction Loop ---
     # Each iteration connects to server, executes task, then properly closes the stream
     try:
         instruction = None
         while True:
             # --- START IDLE MODE ---
-            print("Starting idle mode. Waiting for instruction...")
-            stop_event = threading.Event()
+            print("\nStarting idle mode. Waiting for instruction...")
 
             # This blocks until an instruction is received
             instruction = conversation_hub.main_loop(instruction)
 
             # --- STOP IDLE MODE ---
             print("Instruction received. Stopping idle mode.")
-            stop_event.set()
 
             if instruction.lower() in ('q', 'quit'):
                 print("Exiting...")
@@ -292,42 +364,10 @@ def main():
             # Get the robot object (created by client.start())
             robot = client.robot
             
-            # Set robot to home position before starting
-            try:
-                robot.send_action(home)
-            except Exception as e:
-                print(f"Warning: Could not send home action: {e}")
+            # Note: Robot is already at home position from initialization
+            # The animation_robot handles animations during conversation
+            # This robot instance is only for executing the VLA policy task
             
-            # Setup EventRouter stance consumer for this task
-            # If an EventRouter was configured in conversation_hub, subscribe to it.
-            _consumer_thread = None
-            try:
-                if hasattr(conversation_hub, 'get_event_router'):
-                    router, router_loop = conversation_hub.get_event_router()
-                else:
-                    router, router_loop = None, None
-                    
-                if router is not None and router_loop is not None and router_loop.is_running():
-                    async def _turn_status_listener(r: "EventRouter"):
-                        q = await r.subscribe("turn_status")
-                        while not stance_stop_event.is_set():
-                            try:
-                                msg = await asyncio.wait_for(q.get(), timeout=0.5)
-                                stance_queue.put_nowait(msg)
-                            except asyncio.TimeoutError:
-                                continue
-                            except Exception:
-                                break
-                    
-                    # schedule the listener on the router's loop
-                    asyncio.run_coroutine_threadsafe(_turn_status_listener(router), router_loop)
-                    # start consumer thread
-                    _consumer_thread = threading.Thread(target=_stance_consumer, args=(robot,), daemon=True)
-                    _consumer_thread.start()
-                    print("Subscribed to 'turn_status' events and started stance consumer.")
-            except Exception as ex:
-                print(f"EventRouter setup skipped: {ex}")
-
             # --- PHASE 3: Task Execution Loop (for one task) ---
             # CRITICAL: Clear the shutdown_event before starting a new control loop
             client.shutdown_event.clear()
@@ -415,14 +455,7 @@ def main():
                     except Exception as e:
                         print(f"Warning during thread join: {e}")
                 
-                # Stop stance consumer if running
-                if _consumer_thread is not None:
-                    stance_stop_event.set()
-                    try:
-                        _consumer_thread.join(timeout=1.0)
-                    except Exception:
-                        pass
-                    stance_stop_event.clear()  # Reset for next task
+                # Note: stance consumer runs globally and persists across tasks
                 
                 # Brief delay to allow gRPC connection to fully close
                 time.sleep(0.3)
@@ -434,11 +467,40 @@ def main():
     finally:
         # Final cleanup
         cv2.destroyAllWindows()
+        
+        # Stop the stance consumer
+        try:
+            stance_stop_event.set()
+            if animation_consumer_thread is not None and animation_consumer_thread.is_alive():
+                animation_consumer_thread.join(timeout=1.0)
+                print("Animation stance consumer stopped.")
+        except Exception as e:
+            print(f"Warning during stance consumer cleanup: {e}")
+        
+        # Stop the client if running
         try:
             if client is not None and client.running:
                 client.stop()
         except Exception:
             pass
+        
+        # Disconnect the animation robot
+        try:
+            if animation_robot is not None:
+                animation_robot.disconnect()
+                print("Animation robot disconnected.")
+        except Exception as e:
+            print(f"Warning during animation robot cleanup: {e}")
+        
+        # Stop the EventRouter event loop
+        try:
+            if event_loop is not None and event_loop.is_running():
+                event_loop.call_soon_threadsafe(event_loop.stop)
+                event_loop_thread.join(timeout=1.0)
+                print("EventRouter event loop stopped.")
+        except Exception as e:
+            print(f"Warning during EventRouter cleanup: {e}")
+        
         print("Robot client shut down.")
         print("Goodbye!")
 

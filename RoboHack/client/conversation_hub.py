@@ -60,6 +60,95 @@ conversation_history = [{"role": "system", "content": SYSTEM_PROMPT}]
 import sounddevice as sd
 import numpy as np
 import threading
+import asyncio
+from datetime import datetime
+from typing import Optional
+from RoboHack.common.event_router import EventRouter
+
+_event_router: EventRouter | None = None
+# Event loop associated with the EventRouter. When set via `set_event_router`
+# callers can optionally provide the asyncio loop that will service router
+# operations. This allows synchronous code running on other threads to publish
+# safely using `asyncio.run_coroutine_threadsafe`.
+_event_loop: asyncio.AbstractEventLoop | None = None
+
+
+def set_event_router(router: EventRouter, loop: asyncio.AbstractEventLoop | None = None) -> None:
+    """Set a shared EventRouter instance to publish status updates.
+
+    If `loop` is provided it will be used for cross-thread publishing via
+    `asyncio.run_coroutine_threadsafe`. If omitted the helper will attempt
+    reasonable fallbacks.
+    """
+    global _event_router, _event_loop
+    _event_router = router
+    if loop is not None:
+        _event_loop = loop
+    else:
+        # Try to capture a running loop if present; otherwise leave None.
+        try:
+            _event_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            _event_loop = None
+
+
+def get_event_router() -> tuple[EventRouter | None, asyncio.AbstractEventLoop | None]:
+    """Return the configured EventRouter and its associated event loop (if any).
+
+    This is a small helper so other modules (e.g., robot clients) can subscribe
+    to shared topics when a router has been installed via `set_event_router`.
+    """
+    return _event_router, _event_loop
+
+
+def _publish_turn_status(turn: str, message: str | None = None) -> None:
+    """Publish a small status message to topic 'turn_status'.
+
+    Behavior:
+      - If `_event_router` is not set: no-op.
+      - If called from within an asyncio loop: schedule a task on that loop.
+      - If called from a different thread and `_event_loop` is set and running:
+        use `run_coroutine_threadsafe` to publish into that loop.
+      - Otherwise fall back to running a short-lived asyncio.run() to publish.
+
+    The payload contains `turn`, `message`, and an ISO timestamp.
+    """
+    if _event_router is None:
+        return
+
+    payload = {
+        "turn": turn,
+        "message": message,
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+    }
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        # No running loop in this thread: try to use the recorded event loop
+        if _event_loop is not None and _event_loop.is_running():
+            try:
+                asyncio.run_coroutine_threadsafe(_event_router.publish("turn_status", payload), _event_loop)
+                return
+            except Exception:
+                # fall back to running a new loop
+                pass
+        # Fallback: create a short-lived loop to publish
+        try:
+            asyncio.run(_event_router.publish("turn_status", payload))
+        except Exception:
+            # best-effort: swallow exceptions in status publishing
+            return
+    else:
+        # We are inside an asyncio loop: schedule the publish
+        try:
+            loop.create_task(_event_router.publish("turn_status", payload))
+        except Exception:
+            try:
+                asyncio.ensure_future(_event_router.publish("turn_status", payload))
+            except Exception:
+                # swallow any publish failures
+                return
 
 def record_audio(fs):
     """
@@ -91,6 +180,11 @@ def record_audio(fs):
     t.join()
 
     # Combine all chunks into one array
+    if not recorded_chunks:
+        print("Warning: No audio data recorded.")
+        # Return empty array with correct shape
+        return np.array([], dtype='int16').reshape(0, 1)
+    
     recording = np.concatenate(recorded_chunks, axis=0)
     print("Recording finished.")
     return recording
@@ -163,9 +257,11 @@ def text_to_speech_and_play(text):
 def main_loop(last_instruction: Optional[str] = None):
     """The main conversation loop."""
     text_to_speech_and_play("Hello! I am ready to help.")
+    _publish_turn_status("idle", "greeting_played")
 
     while True:
         # 1. Listen
+        _publish_turn_status("user", "listening_start")
         audio = record_audio(SAMPLE_RATE)
 
         # 2. Transcribe (STT)
@@ -185,6 +281,7 @@ def main_loop(last_instruction: Optional[str] = None):
             continue
 
         # 3. Think (Ollama)
+        _publish_turn_status("assistant", "thinking")
         ai_response = get_ai_response(full_text)
 
         # 4. Check for Task
@@ -203,15 +300,18 @@ def main_loop(last_instruction: Optional[str] = None):
 
 
                 # Confirm task and end
+                _publish_turn_status("assistant", "task_identified")
                 text_to_speech_and_play(f"Okay, I will {final_task}.")
                 print("Conversation ended.")
                 break
         except json.JSONDecodeError:
             # It's not JSON, so it's a normal chat response
             # 5. Speak (TTS)
+            _publish_turn_status("assistant", "speaking")
             text_to_speech_and_play(ai_response)
     with open(TASK_FILE, "r") as f:
         task = f.read()
+    _publish_turn_status("idle", "conversation_end")
     return task
 
 if __name__ == "__main__":
