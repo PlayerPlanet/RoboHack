@@ -1,6 +1,7 @@
 from typing import Optional
 
 import ollama
+import cv2
 import sounddevice as sd
 import soundfile as sf
 from scipy.io.wavfile import write
@@ -18,7 +19,7 @@ from RoboHack.common.event_router import EventRouter
 # --- Configuration ---
 STT_URL = "http://localhost:8000/stt"
 TTS_URL = "http://localhost:8000/tts"
-OLLAMA_MODEL = "qwen2.5vl:7b"
+OLLAMA_MODEL = "qwen2.5vl:72b"
 
 
 SAMPLE_RATE = 16000
@@ -203,6 +204,10 @@ def get_ai_response(user_text):
 
     # Add user message to history
     conversation_history.append({"role": "user", "content": user_text})
+
+    # Try to capture a single webcam image and attach it to the conversation history.
+    # This uses the system default camera (index 0). If the camera is unavailable
+    # we simply continue without failing the chat flow.
 
     try:
         response = ollama.chat(

@@ -11,7 +11,8 @@ import sys
 from pathlib import Path
 from typing import Any
 from lerobot.async_inference.helpers import TimedAction
-
+import dotenv
+dotenv.load_dotenv()
 
 # --- Assuming camera_fix is needed ---
 # CRITICAL: Import patches BEFORE any lerobot imports
@@ -29,9 +30,9 @@ from lerobot.cameras import CameraConfig
 from lerobot.cameras.opencv import OpenCVCameraConfig
 # Import the actual robot class
 from lerobot.robots.so101_follower import SO101Follower, SO101FollowerConfig
-import conversation_hub  # Assuming this is your module for getting instructions
+from RoboHack.client import conversation_hub  # Assuming this is your module for getting instructions
 
-import mediapipe as mp
+
 
 # Helper to create a zeroed action dict using the robot's declared action_features
 def _action_dict_for(robot) -> dict[str, float]:
@@ -74,7 +75,7 @@ home = {
 }
 
 class FaceTrackerThread(threading.Thread):
-
+    import mediapipe as mp
     # Updated __init__ to accept window_name
     def __init__(self, env: Any, stop_event, window_name: str):
         super().__init__()
@@ -228,7 +229,7 @@ def main():
     client_cfg = RobotClientConfig(
         robot=robot_cfg,
         server_address=f"{SERVER_IP}:{SERVER_PORT}",
-        policy_device="cuda",
+        policy_device="cpu",
         policy_type="smolvla",  # Diffusion policy - flexible with action dims
         pretrained_name_or_path="y1y2y3/so101_test8_smolvla200k_augmented100",  # Diffusion model
         chunk_size_threshold=0.7,
