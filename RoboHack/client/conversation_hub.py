@@ -41,14 +41,13 @@ If you are not certain, or if you are just continuing the conversation
 (e.g., "Hello", "I'm not sure", "Could you repeat that?"), 
 respond with normal, friendly text. DO NOT use JSON.
 
-After you are finished with the, ask: "How did I do?" or somthing similar.
+After you are finished with the task and reconnect with the user, ask how you did!
 
 Example conversation:
 User: Hello robot!
 You: Hello! How can I help you today?
 User: Can you grab that small blue cube for me?
 You: {"task": "grab the small blue cube"}
-You: How did I do?
 """
 
 conversation_history = [{"role": "system", "content": SYSTEM_PROMPT}]
@@ -140,10 +139,10 @@ def main_loop(last_instruction: Optional[str] = None):
 
         # 2. Transcribe (STT)
         user_text = speech_to_text(audio, SAMPLE_RATE)
-        if last_instruction:
+        if last_instruction is not None:
             full_text = ("The latest task you tried is: "
-            +last_instruction
-            +"\n Keeping this in mind, here's what the user said next: "
+            + last_instruction
+            + "\n Keeping this in mind, here's what the user said next: "
             +user_text)
         else:
             full_text = user_text
