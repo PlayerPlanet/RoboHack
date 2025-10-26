@@ -57,18 +57,44 @@ You: {"task": "grab the small blue cube"}
 
 conversation_history = [{"role": "system", "content": SYSTEM_PROMPT}]
 
-def record_audio(duration, fs):
-    """Records audio from the default microphone."""
-    press = True
-    while press:
-        key = input("Press enter to start listening....")
-        if key == "": press = False
-        pass
-    print("Listening...")
-    recording = sd.rec(int(duration * fs), samplerate=fs, channels=1, dtype='int16')
-    sd.wait()  # Wait for recording to complete
-    print("Finished listening.")
+import sounddevice as sd
+import numpy as np
+import threading
+
+def record_audio(fs):
+    """
+    Records audio from the default microphone until Enter is pressed again.
+    Returns the full recording as a NumPy array.
+    """
+    print("Press Enter to start recording...")
+    input()
+    print("Recording... (press Enter again to stop)")
+
+    # Shared flag for stopping
+    stop_flag = threading.Event()
+    recorded_chunks = []
+
+    def _record():
+        with sd.InputStream(samplerate=fs, channels=1, dtype='int16') as stream:
+            while not stop_flag.is_set():
+                data, _ = stream.read(1024)
+                recorded_chunks.append(data)
+
+    # Start recording in a background thread
+    t = threading.Thread(target=_record)
+    t.start()
+
+    # Wait for user to press Enter again
+    input()
+    print("Stopping recording...")
+    stop_flag.set()
+    t.join()
+
+    # Combine all chunks into one array
+    recording = np.concatenate(recorded_chunks, axis=0)
+    print("Recording finished.")
     return recording
+
 
 def speech_to_text(audio_data, fs):
     """Sends audio data to the STT server and gets text."""
@@ -140,7 +166,7 @@ def main_loop(last_instruction: Optional[str] = None):
 
     while True:
         # 1. Listen
-        audio = record_audio(RECORD_DURATION, SAMPLE_RATE)
+        audio = record_audio(SAMPLE_RATE)
 
         # 2. Transcribe (STT)
         user_text = speech_to_text(audio, SAMPLE_RATE)
