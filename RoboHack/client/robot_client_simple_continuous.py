@@ -66,12 +66,12 @@ SERVER_PORT = 8000
 CAMERA_INDEX = 0
 
 home = {
-    "shoulder_pan.pos": 0.0,
-    "shoulder_lift.pos": -0.5,
-    "elbow_flex.pos": 1,
-    "wrist_flex.pos": -0.5,
-    "wrist_roll.pos": 0.0,
-    "gripper.pos": 0.0,
+    "shoulder_pan.pos": -5.6,
+    "shoulder_lift.pos": -50,
+    "elbow_flex.pos": -50,
+    "wrist_flex.pos": 100,
+    "wrist_roll.pos": -2.6,
+    "gripper.pos": -98.5,
 }
 
 def main():
@@ -135,7 +135,7 @@ def main():
     # --- EventRouter integration: subscribe to 'turn_status' and translate into stances
     stance_queue: "queue.Queue[dict]" = queue.Queue()
     stance_stop_event = threading.Event()
-
+    robot.send_action(home)
     _start_time = time.time()
 
     def _apply_stance_on_robot(msg: dict, env):
@@ -162,21 +162,21 @@ def main():
                     "gripper.pos"]
         # -----------------------------------
 
-        # --- Animation Parameters ---
+        # --- Animation Parameters (in actual position units, not normalized) ---
         # Speaking
         _jaw_frequency = 1.5
-        _jaw_amplitude = 60
+        _jaw_amplitude = 30.0  # gripper position range (degrees or raw units)
         _gesture_frequency = 0.5
-        _gesture_amplitude = 20
+        _gesture_amplitude = 0.15  # wrist_roll position range
         # Idle Sway
-        _sway_frequency_lift = 0.1
+        _sway_frequency_lift = 0.2
         _sway_frequency_flex = 0.15
-        _sway_amplitude_lift = 3
-        _sway_amplitude_flex = 2
+        _sway_amplitude_lift = 0.16  # shoulder_lift position range
+        _sway_amplitude_flex = 0.1  # elbow_flex position range
         # --------------------------
 
-        # --- Build Action Dictionary ---
-        action_dict = {k: 0.0 for k in keys}  # Initialize with zeros
+        # --- Build Action Dictionary starting from home position ---
+        action_dict = {k: float(home.get(k, 0.0)) for k in keys}  # Initialize with home values
         current_time = time.time() - _start_time
 
         # --- Determine State and Apply Animation ---
@@ -186,38 +186,30 @@ def main():
         if turn == 'assistant' and message == 'speaking':
             # --- Speaking Animation ---
             # print("Assistant speaking - animating robot...") # Reduce noise
+            # Jaw (gripper) oscillates between open and closed
             jaw_value = _jaw_amplitude * (np.sin(current_time * 2 * np.pi * _jaw_frequency) * 0.5 + 0.5)
-            gesture_value = _gesture_amplitude * np.sin(current_time * 2 * np.pi * _gesture_frequency)
+            # Gesture (wrist_roll) sways side to side
+            gesture_value = home.get("wrist_roll.pos", 0.0) + _gesture_amplitude * np.sin(current_time * 2 * np.pi * _gesture_frequency)
 
             # Assign to dictionary using safe indices/keys
-            if len(keys) >= 7:
-                action_dict[keys[6]] = float(jaw_value)  # Gripper
-                action_dict[keys[5]] = float(gesture_value)  # Yaw (side-to-side)
-            elif len(keys) > 0:
-                action_dict[keys[-1]] = float(jaw_value)  # Fallback gripper
-
+            if "gripper.pos" in action_dict:
+                action_dict["gripper.pos"] = float(jaw_value)
+            if "wrist_roll.pos" in action_dict:
+                action_dict["wrist_roll.pos"] = float(gesture_value)
 
         else:  # Default to Idle Sway Animation
             # print("Idle/Listening - applying sway...") # Reduce noise
-            sway_lift_value = _sway_amplitude_lift * np.sin(current_time * 2 * np.pi * _sway_frequency_lift)
-            sway_flex_value = _sway_amplitude_flex * np.sin(current_time * 2 * np.pi * _sway_frequency_flex)
+            # Sway relative to home position
+            sway_lift_value = home.get("shoulder_lift.pos", -0.5) + _sway_amplitude_lift * np.sin(current_time * 2 * np.pi * _sway_frequency_lift)
+            sway_flex_value = home.get("elbow_flex.pos", 1.0) + _sway_amplitude_flex * np.sin(current_time * 2 * np.pi * _sway_frequency_flex)
 
-            # Assign sway (assuming indices 1=lift, 2=flex)
-            if len(keys) > 1:
-                action_dict[keys[1]] = float(sway_lift_value)  # Shoulder Lift
-            if len(keys) > 2:
-                action_dict[keys[2]] = float(sway_flex_value)  # Elbow Flex
+            # Assign sway
+            if "shoulder_lift.pos" in action_dict:
+                action_dict["shoulder_lift.pos"] = float(sway_lift_value)
+            if "elbow_flex.pos" in action_dict:
+                action_dict["elbow_flex.pos"] = float(sway_flex_value)
 
-            # Reset speaking animation timer if transitioning from speaking
-            # (This check might need refinement based on actual message flow)
-            # if 'speaking' in str(msg): # Crude check if last state might have been speaking
-            #      _start_time = time.time()
-
-        # Clip final action values
-        for k_ in action_dict:
-            action_dict[k_] = float(np.clip(action_dict[k_], -1.0, 1.0))
-
-        # --- Send action using send_action ---
+        # --- Send action using send_action (NO CLIPPING - robot handles limits) ---
         try:
                 env.send_action(action_dict)
         except Exception as e:
@@ -317,6 +309,10 @@ def main():
             print(f"Executing: '{instruction}'. Press ESC in window to stop.")
 
             # --- PHASE 3: Task Execution Loop (for one task) ---
+            # CRITICAL: Clear the shutdown_event before starting a new control loop
+            # (it was set by the previous run and needs to be reset)
+            client.shutdown_event.clear()
+            
             # Run the control loop but ensure it exits after 15s by scheduling a safe-home injection.
             # We must NOT call client.stop() (it disconnects hardware). Instead we enqueue a
             # TimedAction containing the home pose and then set shutdown_event after the
