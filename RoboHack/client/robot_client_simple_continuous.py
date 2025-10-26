@@ -260,10 +260,18 @@ def main():
     stance_queue: "queue.Queue[dict]" = queue.Queue()
     stance_stop_event = threading.Event()
 
-    def _apply_stance_on_robot(msg: dict):
+    _start_time = time.time()
+    def _apply_stance_on_robot(msg: dict, env):
+        """Translate a turn_status message into an action and send it to the robot.
 
+        Handles 'speaking' state for the assistant by animating jaw and gesture.
+
+        Args:
+            msg: Dictionary with keys 'turn', 'message'.
+            env: The robot environment object (e.g., SO101Follower instance).
+        """
         # --- Animation Parameters (Tune these) ---
-        _start_time = time.time()
+        global _start_time
         _jaw_frequency = 1.5  # Faster open/close for speaking
         _jaw_amplitude = 0.6
         _gesture_frequency = 0.5  # Slower side-to-side or up/down
@@ -272,51 +280,40 @@ def main():
 
         # ---------------------------------------
 
-        def _apply_stance_on_robot(msg: dict, env):
-            """Translate a turn_status message into an action and send it to the robot.
+        action = np.zeros((_action_dim,))
 
-            Handles 'speaking' state for the assistant by animating jaw and gesture.
+        if msg.get('turn') == 'assistant' and msg.get('message') == 'speaking':
+            print("Assistant speaking - animating robot...")
+            current_time = time.time() - _start_time
 
-            Args:
-                msg: Dictionary with keys 'turn', 'message'.
-                env: The robot environment object (e.g., SO101Follower instance).
-            """
-            global _start_time = time.time()
+            # --- Calculate Oscillations ---
+            # Gripper (jaw) - Assumes index 6
+            jaw_value = _jaw_amplitude * (np.sin(
+                current_time * 2 * np.pi * _jaw_frequency) * 0.5 + 0.5)  # Oscillates between 0 and amplitude
 
-            action = np.zeros((_action_dim,))
+            # Gesture (e.g., wrist roll or yaw) - Assumes index 3 (roll) or 5 (yaw)
+            # Let's use yaw (index 5) for a subtle side-to-side "talking" gesture
+            gesture_value = _gesture_amplitude * np.sin(current_time * 2 * np.pi * _gesture_frequency)
 
-            if msg.get('turn') == 'assistant' and msg.get('message') == 'speaking':
-                print("Assistant speaking - animating robot...")
-                current_time = time.time() - _start_time
+            # --- Apply animations to joints ---
+            action[6] = jaw_value  # Gripper
+            action[5] = gesture_value  # Yaw (side-to-side)
 
-                # --- Calculate Oscillations ---
-                # Gripper (jaw) - Assumes index 6
-                jaw_value = _jaw_amplitude * (np.sin(
-                    current_time * 2 * np.pi * _jaw_frequency) * 0.5 + 0.5)  # Oscillates between 0 and amplitude
+            # Clip the final action
+            action = np.clip(action, -1.0, 1.0)
 
-                # Gesture (e.g., wrist roll or yaw) - Assumes index 3 (roll) or 5 (yaw)
-                # Let's use yaw (index 5) for a subtle side-to-side "talking" gesture
-                gesture_value = _gesture_amplitude * np.sin(current_time * 2 * np.pi * _gesture_frequency)
+        else:
+            print("Assistant not speaking - holding position.")
+            _start_time = time.time()
 
-                # --- Apply animations to joints ---
-                action[6] = jaw_value  # Gripper
-                action[5] = gesture_value  # Yaw (side-to-side)
-
-                # Clip the final action
-                action = np.clip(action, -1.0, 1.0)
-
-            else:
-                print("Assistant not speaking - holding position.")
-                _start_time = time.time()
-
-            try:
-                obs, reward, terminated, truncated, info = env.step(action)
-            except Exception as e:
-                print(f"Error sending action to robot: {e}")
+        try:
+            obs, reward, terminated, truncated, info = env.step(action)
+        except Exception as e:
+            print(f"Error sending action to robot: {e}")
 
         return
 
-    def _stance_consumer():
+    def _stance_consumer(env):
         """Thread that consumes stance messages and applies them on the robot."""
         while not stance_stop_event.is_set():
             try:
@@ -324,7 +321,7 @@ def main():
             except Exception:
                 continue
             try:
-                _apply_stance_on_robot(msg)
+                _apply_stance_on_robot(msg, env)
             finally:
                 try:
                     stance_queue.task_done()
@@ -354,7 +351,7 @@ def main():
         try:
             asyncio.run_coroutine_threadsafe(_turn_status_listener(router), router_loop)
             # start consumer thread
-            _consumer_thread = threading.Thread(target=_stance_consumer, daemon=True)
+            _consumer_thread = threading.Thread(target=_stance_consumer,args=(robot,) , daemon=True)
             _consumer_thread.start()
             print("Subscribed to 'turn_status' events and started stance consumer.")
         except Exception:
