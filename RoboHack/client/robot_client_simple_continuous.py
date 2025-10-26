@@ -66,138 +66,13 @@ SERVER_PORT = 8000
 CAMERA_INDEX = 0
 
 home = {
-    "shoulder_pan.pos": 0.1,
-    "shoulder_lift.pos": -0.3,
-    "elbow_flex.pos": 0.2,
-    "wrist_flex.pos": 0.0,
-    "wrist_roll.pos": 0.5,
+    "shoulder_pan.pos": 0.0,
+    "shoulder_lift.pos": -0.5,
+    "elbow_flex.pos": 1,
+    "wrist_flex.pos": -0.5,
+    "wrist_roll.pos": 0.0,
     "gripper.pos": 0.0,
 }
-
-class FaceTrackerThread(threading.Thread):
-    import mediapipe as mp
-    # Updated __init__ to accept window_name
-    def __init__(self, env: Any, stop_event, window_name: str):
-        super().__init__()
-        self.env = env
-        self.stop_event = stop_event
-        self.window_name = window_name  # Store window name
-        self.daemon = True
-        # Use public mediapipe API objects (pylance-friendly).
-        # Use type-ignore to silence pylance attribute issues when stubs differ locally.
-        try:
-            self.mp_face_detection = mp.solutions.face_detection  # type: ignore[attr-defined]
-            self.mp_drawing = mp.solutions.drawing_utils  # type: ignore[attr-defined]
-        except Exception:
-            self.mp_face_detection = None
-            self.mp_drawing = None
-
-        self.P_GAIN_YAW = -0.1
-        self.P_GAIN_Z = -0.1
-
-    def run(self):
-        print("Starting idle facetracking routine")
-
-        # Window is now created and managed by main()
-        # cv2.namedWindow(self.window_name)
-
-        try:
-            while not self.stop_event.is_set():
-                # Acquire fresh observation each loop using SO101Follower API
-                try:
-                    obs = self.env.get_observation()
-                except Exception:
-                    # If we can't get observations, stop the idle routine
-                    self.stop_event.set()
-                    break
-
-                image_rgb = obs.get("images", {}).get("primary")
-                if image_rgb is None:
-                    # no image available, sleep and continue
-                    time.sleep(0.02)
-                    continue
-
-                image_display = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
-                try:
-                    image_rgb.flags.setflags(write=0)
-                except Exception:
-                    pass
-
-                # Run face detection using a short-lived detector (keeps code simple)
-                FaceDetection = getattr(self.mp_face_detection, "FaceDetection", None)
-                if FaceDetection is None:
-                    # mediapipe not available in this environment; skip detection but continue showing image
-                    time.sleep(0.02)
-                    continue
-
-                with FaceDetection(model_selection=0, min_detection_confidence=0.5) as face_detection:
-                    results = face_detection.process(image_rgb)
-
-                # Build an action dict keyed by '<motor>.pos' using robot's action_features order
-                action_dict = _action_dict_for(self.env)
-                detections = getattr(results, "detections", None)
-                if detections:
-                    for detection in detections:
-                        # draw each detection onto display (guard drawing util)
-                        if self.mp_drawing is not None:
-                            try:
-                                self.mp_drawing.draw_detection(image_display, detection)
-                            except Exception:
-                                pass
-
-                    first_detection = detections[0]
-                    bbox = first_detection.location_data.relative_bounding_box
-
-                    cx = bbox.xmin + bbox.width / 2
-                    cy = bbox.ymin + bbox.height / 2
-
-                    error_x = cx - 0.5
-                    error_y = cy - 0.5
-
-                    # assign gains to robust keys if present
-                    keys = list(action_dict.keys())
-                    if len(keys) > 5:
-                        action_dict[keys[5]] = float(self.P_GAIN_YAW * error_x)
-                    if len(keys) > 2:
-                        action_dict[keys[2]] = float(self.P_GAIN_Z * error_y)
-
-                    # clip values conservatively
-                    for k in action_dict:
-                        action_dict[k] = float(np.clip(action_dict[k], -1.0, 1.0))
-
-                # show image
-                cv2.imshow(self.window_name, image_display)
-
-                if cv2.waitKey(1) & 0xFF == 27:  # ESC key
-                    self.stop_event.set()
-                    break
-
-                if self.stop_event.is_set():
-                    break
-
-                # Send the action to the follower using its send_action API
-                try:
-                    if hasattr(self.env, "send_action"):
-                        _ = self.env.send_action(action_dict)
-                except Exception:
-                    # on error, attempt to stop the routine
-                    self.stop_event.set()
-                    break
-
-                # handle any termination signal returned in observations if applicable
-                # (SO101Follower uses separate reset() so we don't expect a terminated flag here)
-                time.sleep(0.02)
-
-        finally:
-            print("Stopping idle process")
-            # Let main() handle destroying the window
-            # cv2.destroyAllWindows()
-            if hasattr(self.env, "reset"):
-                try:
-                    self.env.send_action(home)
-                except Exception:
-                    pass
-
 
 def main():
     # --- PHASE 1: SETUP (Done ONCE) ---
@@ -282,7 +157,7 @@ def main():
         # ---------------------------------------
 
         action = np.zeros((_action_dim,))
-
+        _start_time = 0
         if msg.get('turn') == 'assistant' and msg.get('message') == 'speaking':
             print("Assistant speaking - animating robot...")
             current_time = time.time() - _start_time
@@ -308,7 +183,10 @@ def main():
             _start_time = time.time()
 
         try:
-            obs, reward, terminated, truncated, info = env.step(action)
+            pos = {}
+            for i, r in enumerate(home):
+              pos[r] = action[i]
+            env.send_action(pos)
         except Exception as e:
             print(f"Error sending action to robot: {e}")
 
@@ -367,8 +245,6 @@ def main():
             # --- START IDLE MODE ---
             print("Starting idle mode. Waiting for instruction...")
             stop_event = threading.Event()
-            face_tracker = FaceTrackerThread(robot, stop_event, window_name)
-            face_tracker.start()
 
             # This blocks until an instruction is received
             instruction = conversation_hub.main_loop(instruction)
@@ -376,7 +252,6 @@ def main():
             # --- STOP IDLE MODE ---
             print("Instruction received. Stopping idle mode.")
             stop_event.set()
-            face_tracker.join()  # Wait for thread to finish cleanly
 
             if instruction.lower() in ('q', 'quit'):
                 print("Exiting...")
@@ -389,7 +264,7 @@ def main():
             # We must NOT call client.stop() (it disconnects hardware). Instead we enqueue a
             # TimedAction containing the home pose and then set shutdown_event after the
             # client has reported it performed that action.
-            timeout_s = 15.0
+            timeout_s = 30.0
 
             def _inject_home_and_shutdown():
                 try:
