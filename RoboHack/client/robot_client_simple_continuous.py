@@ -127,6 +127,7 @@ def main():
     # --- EventRouter integration: subscribe to 'turn_status' and translate into stances
     stance_queue: "queue.Queue[dict]" = queue.Queue()
     stance_stop_event = threading.Event()
+    stance_pause_event = threading.Event()  # Pause stance consumer during VLA execution
     _start_time = time.time()
 
     def _apply_stance_on_robot(msg: dict, env):
@@ -200,12 +201,12 @@ def main():
             if "elbow_flex.pos" in action_dict:
                 action_dict["elbow_flex.pos"] = float(sway_flex_value)
 
-            # Gripper alternates between -100 and 100 every 1 second
+            # Gripper oscillates between -100 and 0 at 0.5 Hz (2 second period)
             if "gripper.pos" in action_dict:
-                # Alternate based on integer seconds: even seconds = -100, odd seconds = 100
-                second = int(current_time) % 2
-                gripper_value = -100.0 if second == 0 else 100.0
-                action_dict["gripper.pos"] = gripper_value
+                # Oscillate at 0.5 Hz: full cycle every 2 seconds
+                gripper_value = -50.0 + (-50.0) * np.sin(current_time * 2 * np.pi * 0.5)
+                # This ranges from -100 (closed) to 0 (open)
+                action_dict["gripper.pos"] = float(gripper_value)
 
         # --- Send action using send_action (NO CLIPPING - robot handles limits) ---
         try:
@@ -221,6 +222,11 @@ def main():
         current_msg = {}  # Start in idle state
 
         while not stance_stop_event.is_set():
+            # Check if paused (during VLA task execution)
+            if stance_pause_event.is_set():
+                time.sleep(0.1)
+                continue
+            
             msg_received = False
             try:
                 # Check for a new message without blocking indefinitely
@@ -277,7 +283,7 @@ def main():
     print("Initializing robot for animations...")
     animation_robot_cfg = SO101FollowerConfig(
         port=SO101_PORT,
-        id="follower_so101_animations",
+        id="follower_so101",  # Same ID as VLA client to share calibration
         cameras=camera_cfg
     )
     animation_robot = SO101Follower(animation_robot_cfg)
@@ -341,6 +347,19 @@ def main():
                 break  # Exit the instruction loop
 
             print(f"Executing: '{instruction}'")
+            
+            # --- PAUSE STANCE CONSUMER AND DISCONNECT ANIMATION ROBOT ---
+            # CRITICAL: Pause animations and close robot connection to avoid conflicts with VLA client
+            print("Pausing animations and disconnecting animation robot...")
+            stance_pause_event.set()  # Pause the stance consumer
+            time.sleep(0.2)  # Give stance consumer time to stop sending actions
+            
+            try:
+                if animation_robot is not None:
+                    animation_robot.disconnect()
+                    print("Animation robot disconnected.")
+            except Exception as e:
+                print(f"Warning during animation robot disconnect: {e}")
             
             # --- CREATE A FRESH CLIENT FOR THIS TASK ---
             # CRITICAL: RobotClient cannot be reused after stop() - must recreate
@@ -460,6 +479,23 @@ def main():
                 # Brief delay to allow gRPC connection to fully close
                 time.sleep(0.3)
                 
+                # --- RECONNECT ANIMATION ROBOT AND RESUME ANIMATIONS ---
+                print("Reconnecting animation robot and resuming animations...")
+                try:
+                    if animation_robot is not None:
+                        animation_robot.connect()
+                        print("Animation robot reconnected.")
+                        # Move back to home position
+                        animation_robot.send_action(home)
+                        time.sleep(1.0)
+                        # Resume stance consumer
+                        stance_pause_event.clear()
+                        print("Animations resumed.")
+                except Exception as e:
+                    print(f"Warning: Could not reconnect animation robot: {e}")
+                    # Try to resume anyway
+                    stance_pause_event.clear()
+                
                 print("Action stream closed. Ready for new task.\n")
 
     except KeyboardInterrupt:
@@ -471,11 +507,25 @@ def main():
         # Stop the stance consumer
         try:
             stance_stop_event.set()
+            stance_pause_event.set()  # Pause to prevent interference
             if animation_consumer_thread is not None and animation_consumer_thread.is_alive():
                 animation_consumer_thread.join(timeout=1.0)
                 print("Animation stance consumer stopped.")
         except Exception as e:
             print(f"Warning during stance consumer cleanup: {e}")
+        
+        # Move robot to safe position before disconnecting
+        print("Moving robot to safe position...")
+        try:
+            if animation_robot is not None:
+                # Ensure robot is connected
+                if not hasattr(animation_robot, '_is_connected') or not animation_robot._is_connected:
+                    animation_robot.connect()
+                animation_robot.send_action(safe)
+                time.sleep(2.0)
+                print("Robot moved to safe position.")
+        except Exception as e:
+            print(f"Warning: Could not move to safe position: {e}")
         
         # Stop the client if running
         try:
