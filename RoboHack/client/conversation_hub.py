@@ -54,87 +54,49 @@ User: Hello robot!
 You: Hey there, carbon-based lifeform! What can I grab or poke for you today?
 User: Can you grab that small blue cube for me?
 You: {"task": "grab the small blue cube"}
-
-
-# --- Additional Examples of Tasks and JSON Responses ---
-
-User: Pick up the red block.
-You: {"task": "move the claw to the red block, close claw, and lift it slightly"}
-
-User: Hand me the screwdriver.
-You: {"task": "grab the screwdriver with the claw and extend it toward the user"}
-
-User: Wave goodbye.
-You: {"task": "rotate arm side to side twice while keeping claw open"}
-
-User: Stack the green cube on top of the yellow one.
-You: {"task": "grab the green cube with the claw and place it on top of the yellow cube"}
-
-User: Point at that button.
-You: {"task": "extend the arm and orient the claw toward the button"}
-
-User: Press the red button.
-You: {"task": "move the claw over the red button and press down gently"}
-
-User: Stir the cup of coffee.
-You: {"task": "grab the spoon with the claw and move it in a circular motion inside the cup"}
-
-User: Knock on the table.
-You: {"task": "use the closed claw to tap the table surface twice"}
-
-User: Scratch your head.
-You: {"task": "lightly tap the top of the head with the claw"}
-
-User: Pretend you’re Italian.
-You: {"task": "close the claw and wave it around in the air with enthusiasm"}
-
-User: Flip the switch up.
-You: {"task": "use the claw to push the switch upward"}
-
-User: Push that box a little to the left.
-You: {"task": "nudge the box slightly to the left with the claw"}
-
-User: Show approval.
-You: {"task": "open and close the claw twice in a quick, proud motion"}
-
-User: Clap your hands.
-You: {"task": "open and close the claw repeatedly to mimic clapping"}
-
-User: Pick up the pen and write ‘Hello’.
-You: {"task": "grip the pen and move it to trace the word ‘Hello’ on paper"}
-
-User: Tap the keyboard key labeled 'Enter'.
-You: {"task": "use the claw to press the ‘Enter’ key"}
-
-User: Pour the water into the glass.
-You: {"task": "grip the bottle with the claw and tilt it to pour into the glass"}
-
-User: Point north.
-You: {"task": "extend the arm and orient the claw toward the north direction"}
-
-User: Give me a high five!
-You: {"task": "extend arm quickly forward with open claw for a friendly tap"}
-
-User: Show me some enthusiasm!
-You: {"task": "wave the claw rapidly in the air"}
-
 """
 
 
 conversation_history = [{"role": "system", "content": SYSTEM_PROMPT}]
 
-def record_audio(duration, fs):
-    """Records audio from the default microphone."""
-    press = True
-    while press:
-        key = input("Press enter to start listening....")
-        if key == "": press = False
-        pass
-    print("Listening...")
-    recording = sd.rec(int(duration * fs), samplerate=fs, channels=1, dtype='int16')
-    sd.wait()  # Wait for recording to complete
-    print("Finished listening.")
+import sounddevice as sd
+import numpy as np
+import threading
+
+def record_audio(fs):
+    """
+    Records audio from the default microphone until Enter is pressed again.
+    Returns the full recording as a NumPy array.
+    """
+    print("Press Enter to start recording...")
+    input()
+    print("Recording... (press Enter again to stop)")
+
+    # Shared flag for stopping
+    stop_flag = threading.Event()
+    recorded_chunks = []
+
+    def _record():
+        with sd.InputStream(samplerate=fs, channels=1, dtype='int16') as stream:
+            while not stop_flag.is_set():
+                data, _ = stream.read(1024)
+                recorded_chunks.append(data)
+
+    # Start recording in a background thread
+    t = threading.Thread(target=_record)
+    t.start()
+
+    # Wait for user to press Enter again
+    input()
+    print("Stopping recording...")
+    stop_flag.set()
+    t.join()
+
+    # Combine all chunks into one array
+    recording = np.concatenate(recorded_chunks, axis=0)
+    print("Recording finished.")
     return recording
+
 
 def speech_to_text(audio_data, fs):
     """Sends audio data to the STT server and gets text."""
@@ -206,7 +168,7 @@ def main_loop(last_instruction: Optional[str] = None):
 
     while True:
         # 1. Listen
-        audio = record_audio(RECORD_DURATION, SAMPLE_RATE)
+        audio = record_audio(SAMPLE_RATE)
 
         # 2. Transcribe (STT)
         user_text = speech_to_text(audio, SAMPLE_RATE)
