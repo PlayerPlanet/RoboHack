@@ -137,76 +137,133 @@ def main():
     stance_stop_event = threading.Event()
 
     _start_time = time.time()
+
     def _apply_stance_on_robot(msg: dict, env):
         """Translate a turn_status message into an action and send it to the robot.
 
-        Handles 'speaking' state for the assistant by animating jaw and gesture.
+        Handles 'speaking' state with jaw/gesture animation,
+        and 'idle' state with a slow sway animation.
 
         Args:
-            msg: Dictionary with keys 'turn', 'message'.
+            msg: Dictionary possibly containing 'turn', 'message'. Can be empty for idle.
             env: The robot environment object (e.g., SO101Follower instance).
         """
-        # --- Animation Parameters (Tune these) ---
-        global _start_time
-        _jaw_frequency = 1.5  # Faster open/close for speaking
-        _jaw_amplitude = 0.6
-        _gesture_frequency = 0.5  # Slower side-to-side or up/down
-        _gesture_amplitude = 0.2
-        _action_dim = 7  # Default action dimension for SO101 (assuming [dx, dy, dz, d_roll, d_pitch, d_yaw, gripper])
+        global _start_time  # Use global
+        # --- Dynamically get action dim ---
+        try:
+            keys = list(getattr(env, "action_features", {}).keys())
+            if not keys:  # Fallback keys if action_features fails
+                keys = ["shoulder_pan.pos", "shoulder_lift.pos", "elbow_flex.pos", "wrist_flex.pos", "wrist_roll.pos",
+                        "gripper.pos"]
+            _action_dim = len(keys)
+        except Exception:
+            _action_dim = 7  # Final fallback
+            keys = ["shoulder_pan.pos", "shoulder_lift.pos", "elbow_flex.pos", "wrist_flex.pos", "wrist_roll.pos",
+                    "gripper.pos"]
+        # -----------------------------------
 
-        # ---------------------------------------
+        # --- Animation Parameters ---
+        # Speaking
+        _jaw_frequency = 1.5
+        _jaw_amplitude = 60
+        _gesture_frequency = 0.5
+        _gesture_amplitude = 20
+        # Idle Sway
+        _sway_frequency_lift = 0.1
+        _sway_frequency_flex = 0.15
+        _sway_amplitude_lift = 3
+        _sway_amplitude_flex = 2
+        # --------------------------
 
-        action = np.zeros((_action_dim,))
-        _start_time = 0
-        if msg.get('turn') == 'assistant' and msg.get('message') == 'speaking':
-            print("Assistant speaking - animating robot...")
-            current_time = time.time() - _start_time
+        # --- Build Action Dictionary ---
+        action_dict = {k: 0.0 for k in keys}  # Initialize with zeros
+        current_time = time.time() - _start_time
 
-            # --- Calculate Oscillations ---
-            # Gripper (jaw) - Assumes index 6
-            jaw_value = _jaw_amplitude * (np.sin(
-                current_time * 2 * np.pi * _jaw_frequency) * 0.5 + 0.5)  # Oscillates between 0 and amplitude
+        # --- Determine State and Apply Animation ---
+        turn = msg.get('turn')
+        message = msg.get('message')
 
-            # Gesture (e.g., wrist roll or yaw) - Assumes index 3 (roll) or 5 (yaw)
-            # Let's use yaw (index 5) for a subtle side-to-side "talking" gesture
+        if turn == 'assistant' and message == 'speaking':
+            # --- Speaking Animation ---
+            # print("Assistant speaking - animating robot...") # Reduce noise
+            jaw_value = _jaw_amplitude * (np.sin(current_time * 2 * np.pi * _jaw_frequency) * 0.5 + 0.5)
             gesture_value = _gesture_amplitude * np.sin(current_time * 2 * np.pi * _gesture_frequency)
 
-            # --- Apply animations to joints ---
-            action[6] = jaw_value  # Gripper
-            action[5] = gesture_value  # Yaw (side-to-side)
+            # Assign to dictionary using safe indices/keys
+            if len(keys) >= 7:
+                action_dict[keys[6]] = float(jaw_value)  # Gripper
+                action_dict[keys[5]] = float(gesture_value)  # Yaw (side-to-side)
+            elif len(keys) > 0:
+                action_dict[keys[-1]] = float(jaw_value)  # Fallback gripper
 
-            # Clip the final action
-            action = np.clip(action, -1.0, 1.0)
 
-        else:
-            print("Assistant not speaking - holding position.")
-            _start_time = time.time()
+        else:  # Default to Idle Sway Animation
+            # print("Idle/Listening - applying sway...") # Reduce noise
+            sway_lift_value = _sway_amplitude_lift * np.sin(current_time * 2 * np.pi * _sway_frequency_lift)
+            sway_flex_value = _sway_amplitude_flex * np.sin(current_time * 2 * np.pi * _sway_frequency_flex)
 
+            # Assign sway (assuming indices 1=lift, 2=flex)
+            if len(keys) > 1:
+                action_dict[keys[1]] = float(sway_lift_value)  # Shoulder Lift
+            if len(keys) > 2:
+                action_dict[keys[2]] = float(sway_flex_value)  # Elbow Flex
+
+            # Reset speaking animation timer if transitioning from speaking
+            # (This check might need refinement based on actual message flow)
+            # if 'speaking' in str(msg): # Crude check if last state might have been speaking
+            #      _start_time = time.time()
+
+        # Clip final action values
+        for k_ in action_dict:
+            action_dict[k_] = float(np.clip(action_dict[k_], -1.0, 1.0))
+
+        # --- Send action using send_action ---
         try:
-            pos = {}
-            for i, r in enumerate(home):
-              pos[r] = action[i]
-            env.send_action(pos)
+                env.send_action(action_dict)
         except Exception as e:
-            print(f"Error sending action to robot: {e}")
-
+            print(f"Error sending stance action: {e}")
+        # ------------------------------------
         return
 
     def _stance_consumer(env):
-        """Thread that consumes stance messages and applies them on the robot."""
+        """Thread that consumes stance messages OR triggers idle animation."""
+        last_msg_time = time.time()
+        current_msg = {}  # Start in idle state
+
         while not stance_stop_event.is_set():
+            msg_received = False
             try:
-                msg = stance_queue.get(timeout=0.5)
-            except Exception:
-                continue
+                # Check for a new message without blocking indefinitely
+                msg = stance_queue.get_nowait()
+                current_msg = msg  # Update state if message received
+                last_msg_time = time.time()
+                msg_received = True
+            except queue.Empty:
+
+                pass
+            except Exception as e:
+                print(f"Stance queue error: {e}")
+                # Continue loop even if queue read fails
+
+            # --- Apply stance based on current_msg ---
+            # This will run repeatedly, applying either speaking or idle animation
             try:
-                _apply_stance_on_robot(msg, env)
-            finally:
+                _apply_stance_on_robot(current_msg, env)
+            except Exception as e:
+                print(f"Error applying stance: {e}")
+
+            # If a message was received, mark it as done
+            if msg_received:
                 try:
                     stance_queue.task_done()
-                except Exception:
+                except ValueError:
                     pass
+                except Exception as e:
+                    print(f"Stance task_done error: {e}")
 
+
+            # Control loop speed
+            time.sleep(0.05)  # Run at ~20Hz
     # If an EventRouter was configured in conversation_hub, subscribe to it.
     try:
         router, router_loop = conversation_hub.get_event_router()
