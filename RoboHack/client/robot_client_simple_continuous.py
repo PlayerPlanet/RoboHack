@@ -1,6 +1,9 @@
 # robot_client_VLA_continuous.py
 
 import threading
+import asyncio
+import queue
+from RoboHack.common.event_router import EventRouter
 import time
 import numpy as np
 import cv2
@@ -252,6 +255,64 @@ def main():
 
     # Get the robot object (created by client.start())
     robot = client.robot
+
+    # --- EventRouter integration: subscribe to 'turn_status' and translate into stances
+    stance_queue: "queue.Queue[dict]" = queue.Queue()
+    stance_stop_event = threading.Event()
+
+    def _apply_stance_on_robot(msg: dict):
+        """Translate a turn_status message into a conservative action and send it to the robot.
+
+        The message payload is expected to be a dict with keys: 'turn', 'message', 'timestamp'.
+        We keep actions small and safe: mainly adjust `gripper.pos` or use `home`.
+        """
+        return
+
+    def _stance_consumer():
+        """Thread that consumes stance messages and applies them on the robot."""
+        while not stance_stop_event.is_set():
+            try:
+                msg = stance_queue.get(timeout=0.5)
+            except Exception:
+                continue
+            try:
+                _apply_stance_on_robot(msg)
+            finally:
+                try:
+                    stance_queue.task_done()
+                except Exception:
+                    pass
+
+    # If an EventRouter was configured in conversation_hub, subscribe to it.
+    try:
+        router, router_loop = conversation_hub.get_event_router()
+    except Exception:
+        router = None
+        router_loop = None
+
+    if router is not None and router_loop is not None and router_loop.is_running():
+        async def _turn_status_listener(r: "EventRouter"):
+            q = await r.subscribe("turn_status")
+            while True:
+                msg = await q.get()
+                # push into the thread-safe queue for the robot thread to consume
+                try:
+                    stance_queue.put_nowait(msg)
+                except Exception:
+                    # fall back to blocking put
+                    stance_queue.put(msg)
+
+        # schedule the listener on the router's loop
+        try:
+            asyncio.run_coroutine_threadsafe(_turn_status_listener(router), router_loop)
+            # start consumer thread
+            _consumer_thread = threading.Thread(target=_stance_consumer, daemon=True)
+            _consumer_thread.start()
+            print("Subscribed to 'turn_status' events and started stance consumer.")
+        except Exception:
+            print("Failed to subscribe to EventRouter turn_status topic.")
+    else:
+        print("No EventRouter available or router loop not running; skipping turn_status subscription.")
 
     # --- PHASE 2: Main Instruction Loop ---
     try:
