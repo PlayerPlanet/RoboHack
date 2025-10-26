@@ -70,6 +70,14 @@ home = {
     "shoulder_lift.pos": -50,
     "elbow_flex.pos": -50,
     "wrist_flex.pos": 100,
+    "wrist_roll.pos": -100,
+    "gripper.pos": -98.5,
+}
+safe ={
+    "shoulder_pan.pos": 0,
+    "shoulder_lift.pos": -90,
+    "elbow_flex.pos": 80,
+    "wrist_flex.pos": -100,
     "wrist_roll.pos": -2.6,
     "gripper.pos": -98.5,
 }
@@ -100,7 +108,7 @@ def main():
         cameras=camera_cfg
     )
 
-    # 3. Create client configuration
+    # 3. Create client configuration (reused for each task)
     client_cfg = RobotClientConfig(
         robot=robot_cfg,
         server_address=f"{SERVER_IP}:{SERVER_PORT}",
@@ -111,31 +119,14 @@ def main():
         actions_per_chunk=50,
     )
 
-    # 4. Create and start client (Done ONCE)
-    client = RobotClient(client_cfg)
-
-    print(f"Connecting to server at {client_cfg.server_address}...")
-
-    if not client.start():
-        print("Failed to connect to the policy server.")
-        return
-
-    print("Connected to server!")
-    # Start the background thread that receives actions (Done ONCE)
-    action_receiver_thread = threading.Thread(target=client.receive_actions, daemon=True)
-    action_receiver_thread.start()
-
-    # Create a window for the live feed (Done ONCE)
-    window_name = 'Robot View'
-    cv2.namedWindow(window_name)
-
-    # Get the robot object (created by client.start())
-    robot = client.robot
+    # Client will be created fresh for each task (not reusable after stop())
+    client = None
+    action_receiver_thread = None
+    robot = None
 
     # --- EventRouter integration: subscribe to 'turn_status' and translate into stances
     stance_queue: "queue.Queue[dict]" = queue.Queue()
     stance_stop_event = threading.Event()
-    robot.send_action(home)
     _start_time = time.time()
 
     def _apply_stance_on_robot(msg: dict, env):
@@ -148,7 +139,7 @@ def main():
             msg: Dictionary possibly containing 'turn', 'message'. Can be empty for idle.
             env: The robot environment object (e.g., SO101Follower instance).
         """
-        global _start_time  # Use global
+        nonlocal _start_time  # Use nonlocal to reference the outer scope variable
         # --- Dynamically get action dim ---
         try:
             keys = list(getattr(env, "action_features", {}).keys())
@@ -256,38 +247,9 @@ def main():
 
             # Control loop speed
             time.sleep(0.05)  # Run at ~20Hz
-    # If an EventRouter was configured in conversation_hub, subscribe to it.
-    try:
-        router, router_loop = conversation_hub.get_event_router()
-    except Exception:
-        router = None
-        router_loop = None
-
-    if router is not None and router_loop is not None and router_loop.is_running():
-        async def _turn_status_listener(r: "EventRouter"):
-            q = await r.subscribe("turn_status")
-            while True:
-                msg = await q.get()
-                # push into the thread-safe queue for the robot thread to consume
-                try:
-                    stance_queue.put_nowait(msg)
-                except Exception:
-                    # fall back to blocking put
-                    stance_queue.put(msg)
-
-        # schedule the listener on the router's loop
-        try:
-            asyncio.run_coroutine_threadsafe(_turn_status_listener(router), router_loop)
-            # start consumer thread
-            _consumer_thread = threading.Thread(target=_stance_consumer,args=(robot,) , daemon=True)
-            _consumer_thread.start()
-            print("Subscribed to 'turn_status' events and started stance consumer.")
-        except Exception:
-            print("Failed to subscribe to EventRouter turn_status topic.")
-    else:
-        print("No EventRouter available or router loop not running; skipping turn_status subscription.")
-
+    
     # --- PHASE 2: Main Instruction Loop ---
+    # Each iteration connects to server, executes task, then properly closes the stream
     try:
         instruction = None
         while True:
@@ -306,17 +268,71 @@ def main():
                 print("Exiting...")
                 break  # Exit the instruction loop
 
-            print(f"Executing: '{instruction}'. Press ESC in window to stop.")
+            print(f"Executing: '{instruction}'")
+            
+            # --- CREATE A FRESH CLIENT FOR THIS TASK ---
+            # CRITICAL: RobotClient cannot be reused after stop() - must recreate
+            print(f"Creating new client for server at {client_cfg.server_address}...")
+            client = RobotClient(client_cfg)
+            
+            # --- CONNECT TO SERVER FOR THIS TASK ---
+            print("Connecting to server...")
+            
+            if not client.start():
+                print("Failed to connect to the policy server. Retrying in 2 seconds...")
+                time.sleep(2.0)
+                continue
+            
+            print("Connected to server!")
+            
+            # Start the background thread that receives actions
+            action_receiver_thread = threading.Thread(target=client.receive_actions, daemon=True)
+            action_receiver_thread.start()
+            
+            # Get the robot object (created by client.start())
+            robot = client.robot
+            
+            # Set robot to home position before starting
+            try:
+                robot.send_action(home)
+            except Exception as e:
+                print(f"Warning: Could not send home action: {e}")
+            
+            # Setup EventRouter stance consumer for this task
+            # If an EventRouter was configured in conversation_hub, subscribe to it.
+            _consumer_thread = None
+            try:
+                if hasattr(conversation_hub, 'get_event_router'):
+                    router, router_loop = conversation_hub.get_event_router()
+                else:
+                    router, router_loop = None, None
+                    
+                if router is not None and router_loop is not None and router_loop.is_running():
+                    async def _turn_status_listener(r: "EventRouter"):
+                        q = await r.subscribe("turn_status")
+                        while not stance_stop_event.is_set():
+                            try:
+                                msg = await asyncio.wait_for(q.get(), timeout=0.5)
+                                stance_queue.put_nowait(msg)
+                            except asyncio.TimeoutError:
+                                continue
+                            except Exception:
+                                break
+                    
+                    # schedule the listener on the router's loop
+                    asyncio.run_coroutine_threadsafe(_turn_status_listener(router), router_loop)
+                    # start consumer thread
+                    _consumer_thread = threading.Thread(target=_stance_consumer, args=(robot,), daemon=True)
+                    _consumer_thread.start()
+                    print("Subscribed to 'turn_status' events and started stance consumer.")
+            except Exception as ex:
+                print(f"EventRouter setup skipped: {ex}")
 
             # --- PHASE 3: Task Execution Loop (for one task) ---
             # CRITICAL: Clear the shutdown_event before starting a new control loop
-            # (it was set by the previous run and needs to be reset)
             client.shutdown_event.clear()
             
-            # Run the control loop but ensure it exits after 15s by scheduling a safe-home injection.
-            # We must NOT call client.stop() (it disconnects hardware). Instead we enqueue a
-            # TimedAction containing the home pose and then set shutdown_event after the
-            # client has reported it performed that action.
+            # Run the control loop but ensure it exits after timeout by scheduling a safe-home injection.
             timeout_s = 30.0
 
             def _inject_home_and_shutdown():
@@ -359,33 +375,70 @@ def main():
 
             stop_timer = threading.Timer(timeout_s, _inject_home_and_shutdown)
             stop_timer.start()
+            
             try:
+                print("Starting control loop...")
                 client.control_loop(instruction)
+                print("Control loop completed.")
             except KeyboardInterrupt:
                 print("\nTask cancelled by user.")
-                # request shutdown if not already requested
-                if client.running:
-                    client.stop()
+            except Exception as e:
+                print(f"Error during control loop: {e}")
             finally:
                 # cancel timer if control_loop finished earlier
                 stop_timer.cancel()
+                
                 # Ensure robot is in a safe home position when the task ends.
+                # CRITICAL: Do this BEFORE stopping the client so the action can execute
                 try:
-                    if hasattr(robot, "send_action"):
+                    if robot is not None and hasattr(robot, "send_action"):
+                        print("Returning robot to home position...")
                         robot.send_action(home)
-                except Exception:
-                    pass
-
-            print("\nReady for new task.")
+                        # Give the robot time to move to home position before disconnecting
+                        time.sleep(2.0)
+                        print("Robot returned to home position.")
+                except Exception as e:
+                    print(f"Warning: Could not return to home: {e}")
+                
+                # --- CRITICAL: Properly close the action stream ---
+                # Only stop AFTER the robot has moved to home
+                print("Closing action stream...")
+                try:
+                    client.stop()
+                except Exception as e:
+                    print(f"Warning during client.stop(): {e}")
+                
+                # Join the action receiver thread
+                if action_receiver_thread is not None and action_receiver_thread.is_alive():
+                    try:
+                        action_receiver_thread.join(timeout=2.0)
+                    except Exception as e:
+                        print(f"Warning during thread join: {e}")
+                
+                # Stop stance consumer if running
+                if _consumer_thread is not None:
+                    stance_stop_event.set()
+                    try:
+                        _consumer_thread.join(timeout=1.0)
+                    except Exception:
+                        pass
+                    stance_stop_event.clear()  # Reset for next task
+                
+                # Brief delay to allow gRPC connection to fully close
+                time.sleep(0.3)
+                
+                print("Action stream closed. Ready for new task.\n")
 
     except KeyboardInterrupt:
         print("\nStopping...")
     finally:
-        # Clean up window and client
+        # Final cleanup
         cv2.destroyAllWindows()
-        client.stop()
-        if action_receiver_thread.is_alive():
-            action_receiver_thread.join()
+        try:
+            if client is not None and client.running:
+                client.stop()
+        except Exception:
+            pass
         print("Robot client shut down.")
         print("Goodbye!")
 
