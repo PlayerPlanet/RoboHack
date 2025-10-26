@@ -344,13 +344,7 @@ def main():
 
         # --- Send action using send_action ---
         try:
-            if hasattr(env, "send_action"):
                 env.send_action(action_dict)
-            else:  # Fallback to step
-                action_array = np.zeros((_action_dim,))
-                for i, k in enumerate(keys):
-                    action_array[min(i, _action_dim - 1)] = action_dict.get(k, 0.0)
-                env.step(action_array)
         except Exception as e:
             print(f"Error sending stance action: {e}")
         # ------------------------------------
